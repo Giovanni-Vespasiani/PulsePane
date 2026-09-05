@@ -28,11 +28,18 @@ final class WindowController: NSObject, NSWindowDelegate {
             defer: false
         )
 
-        // Desktop element, not a normal window. kCGDesktopWindowLevel puts us
-        // with the desktop, below normal app windows (see DECISIONS D-006).
-        window.level = NSWindow.Level(
-            rawValue: Int(CGWindowLevelForKey(.desktopWindow))
-        )
+        // Window level (see DECISIONS D-006).
+        // kCGDesktopWindowLevel ends up BELOW Finder's full-screen desktop
+        // window (kCGDesktopIconWindowLevel) → widget hidden. We render just
+        // ABOVE the desktop icons layer and below kCGNormalWindowLevel (0).
+        // MP_WINDOW_LEVEL env var overrides the raw level for A/B testing.
+        let defaultLevel = Int(CGWindowLevelForKey(.desktopIconWindow)) + 1
+        var rawLevel = defaultLevel
+        if let env = ProcessInfo.processInfo.environment["MP_WINDOW_LEVEL"],
+           let value = Int(env) {
+            rawLevel = value
+        }
+        window.level = NSWindow.Level(rawValue: rawLevel)
 
         // Always render the widget in dark, regardless of system appearance.
         window.appearance = NSAppearance(named: .darkAqua)
@@ -40,10 +47,12 @@ final class WindowController: NSObject, NSWindowDelegate {
         window.backgroundColor = .clear
         window.hasShadow = false
         window.isMovableByWindowBackground = true
-        window.collectionBehavior = [.stationary]
+        window.collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle]
         window.title = "MacPerformance"
 
         super.init()
+
+        log("level rawValue = \(rawLevel) (default: \(defaultLevel), desktopIcon: \(Int(CGWindowLevelForKey(.desktopIconWindow))))")
 
         window.delegate = self
         window.contentView = NSHostingView(rootView: contentView)
@@ -53,10 +62,28 @@ final class WindowController: NSObject, NSWindowDelegate {
     // MARK: - Showing
 
     func show() {
-        window.setFrame(restoredFrame(), display: true)
+        let saved = UserDefaults.standard.string(forKey: Self.frameKey)
+        let restored = restoredFrame()
+        log("persisted frame=\(saved ?? "nil") → restored=\(NSStringFromRect(restored))")
+        window.setFrame(restored, display: true)
         // orderFrontRegardless instead of makeKeyAndOrderFront so we do not
         // steal the keyboard focus / activate the app (desktop widget).
         window.orderFrontRegardless()
+        log("window.frame=\(NSStringFromRect(window.frame))")
+        log("window.level=\(window.level.rawValue)")
+        log("window.isVisible=\(window.isVisible)")
+        log("window.occlusionState=\(window.occlusionState)")
+
+        if let screen = window.screen {
+            log("window.screen.frame=\(NSStringFromRect(screen.frame))")
+        } else {
+            log("window.screen=nil")
+        }
+    }
+
+    private func log(_ message: String) {
+        guard ProcessInfo.processInfo.environment["MP_DEBUG"] == "1" else { return }
+        FileHandle.standardError.write((message + "\n").data(using: .utf8)!)
     }
 
     // MARK: - Position persistence

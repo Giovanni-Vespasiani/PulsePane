@@ -84,19 +84,46 @@ Decision, Motivation, Alternatives considered, Why rejected, Consequences / trad
 
 ---
 
-## D-006: Window level — empirically determined, not assumed
+## D-006: Window level — empirically determined  (FINAL: kCGDesktopIconWindowLevel + 1)
 
-- **Decision:** Start with `.desktop`/`CGWindowLevelForKey(.desktopWindowLevel)`,
-  verify real behaviour (Finder, normal windows, Spaces, Mission Control,
-  "show desktop"), and adjust to the minimal level that gives correct
-  in-front/behind behaviour. Final value recorded in PROJECT_STATE.md and code.
-- **Motivation:** Requirement: looks like desktop element; normal windows appear
-  in front; NOT always-on-top; Finder/Desktop behave normally. Robustness in real
-  use trumps theoretical elegance.
-- **Alternatives considered:** `.normal` frameless; `.desktop`; derived levels.
-- **Why rejected / chosen:** decided by observed behaviour after testing.
-- **Consequences / trade-offs:** May need a specific level constant; fragile
-  levels rejected in favour of what actually behaves.
+- **Decision:** Window level = `kCGDesktopIconWindowLevel + 1` (raw -2147483602,
+  i.e. `Int(CGWindowLevelForKey(.desktopIconWindow)) + 1`); strictly above
+  Finder's desktop window and below `kCGNormalWindowLevel` (0). NOT always-on-top.
+- **Motivation:** original choice `.desktop` / `kCGDesktopWindowLevel` FAILED:
+  the widget was not visible on the desktop (D re-opened by user).
+  Empirical stack on this Mac (macOS 26.6, back→front, from
+  `CGWindowListCopyWindowInfo`):
+  - -2147483626 Window Server (desktop base)
+  - -2147483624 Dock `Wallpaper-…` (full-screen wallpaper window)
+  - **-2147483623 kCGDesktopWindowLevel — original position → FAILED**
+  - -2147483603 kCGDesktopIconWindowLevel — Finder's full-screen desktop window
+    (1710×1107), always present; this is what hides the widget when below it
+  - -2147483602 Window Server menu-bar strip + Notification Center widgets layer
+  - 0 = kCGNormalWindowLevel and above → normal application windows
+- **Candidates tested (with MP_WINDOW_LEVEL env override, documented below):**
+  - A) `kCGDesktopWindowLevel` (-3623): layer strictly below Finder desktop →
+    widget hidden. REJECTED.
+  - B) `kCGDesktopIconWindowLevel` (-3603): equal to Finder desktop layer;
+    visibility would depend on intra-layer ordering (Finder may reorder above)
+    → fragile. REJECTED.
+  - C) `kCGDesktopIconWindowLevel + 1` (-3602): strictly above Finder desktop +
+    wallpaper, below normal windows → CHOSEN.
+- **Layering verified (layer values are authoritative; CGWindowList *index* order
+  is NOT a reliable z-order):**
+  - widget -3602 > Finder desktop -3603 ✓  |  widget -3602 > wallpaper -3624 ✓
+  - widget -3602 < normal windows (0) ✓ (TextEdit at layer 0 covers it)
+- **collectionBehavior:** `[.stationary, .canJoinAllSpaces, .ignoresCycle]`.
+  `.canJoinAllSpaces` → visible on every Space (like desktop icons).
+  `.ignoresCycle` → never grabbed by Cmd-Tab / window cycling.
+  `.stationary` → stays put when switching Spaces. `.fullScreenAuxiliary` NOT
+  added: the widget must stay BELOW fullscreen apps, never floating over them.
+  Behaviour verified at launch (window shown, covered by normal windows);
+  cross-Space look is pending a manual visual check.
+- **Consequences / trade-offs:** shares layer -3602 with the Window Server
+  menu-bar strip and Notification Center widgets; our widget sits center-screen
+  and does not overlap them. The "+1 above kCGDesktopIconWindowLevel" offset is
+  the minimal, principled offset. `MP_WINDOW_LEVEL` env var (int raw value)
+  overrides the level for future A/B testing; default is the final value above.
 
 ---
 

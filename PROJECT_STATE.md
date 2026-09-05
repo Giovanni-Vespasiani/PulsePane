@@ -4,11 +4,30 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** G (overhead measurement, final docs) — COMPLETE. All milestones A–G done.
-- **Self-overhead (measured):** resident ~74 MB RSS; avg CPU ~1.9% while sampling
-  at 1 Hz (includes 1 Hz SwiftUI redraw; measurement via `top -l 10`). Negligible.
-- **Remaining:** only MANUAL visual checkpoints — design look, drag feel, Spaces /
-  Mission Control / show-desktop behaviour (no screen access in this shell).
+- **Milestone D (desktop window behaviour): RE-OPENED → FIXED.** The widget was
+  NOT visible on the desktop: level `kCGDesktopWindowLevel` (-2147483623)
+  sat BELOW Finder's full-screen desktop window (`kCGDesktopIconWindowLevel`) and
+  was hidden by it. **Preliminary state documented BEFORE the fix; resolution
+  below (AFTER).**
+- **CAUSE (precise):** On macOS 26.6 the compositor stack is
+  wallpaper (Dock `Wallpaper-…`, -3624) → **Finder desktop window (-3603, full
+  screen)** → normal windows (0). The widget at -3623 was therefore below the
+  Finder desktop window and invisible, even though it was "on screen" in
+  `CGWindowListCopyWindowInfo`.
+- **FIX (final):** level = `kCGDesktopIconWindowLevel + 1` = **-2147483602** —
+  strictly above Finder desktop & wallpaper, below all normal windows. NOT
+  always-on-top.
+- **collectionBehavior (final):** `[.stationary, .canJoinAllSpaces, .ignoresCycle]`
+  (no `.fullScreenAuxiliary`: widget must stay below fullscreen apps).
+- **Verified (programmatically):** widget -3602 > Finder desktop -3603 ✓;
+  widget -3602 > wallpaper -3624 ✓; widget < normal windows (0) ✓ (TextEdit at
+  layer 0 covers it). Frame on-screen, `isVisible=true`, occlusionState visible,
+  screen attached ✓.
+- **Debug keys added:** `MP_DEBUG=1` → startup diagnostics (level rawValue, frame,
+  isVisible, occlusionState, screen). `MP_WINDOW_LEVEL=<int>` → override level
+  for A/B tests (default = final -3602).
+- **Remaining (manual, visual):** design look, drag feel, and Spaces ×
+  Mission Control × "show desktop" behaviour — no screen access in this shell.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
@@ -24,7 +43,8 @@
 ## Build
 - Build command: `scripts/build.sh` (swift build + make-app.sh); or
   `swift build -c debug` + `./scripts/make-app.sh debug`
-- Last result: SUCCESS (debug). App launched and verified as running process.
+- Last result: SUCCESS (debug) — window level FIXED to -2147483602, verified.
+  App launched and verified as running process.
   (Screenshot unavailable: terminal lacks screen-recording permission.)
 - Path of .app: `~/.build/debug/MacPerformance.app` (and `release` after scripts/build.sh)
 - Warnings/errors: none
@@ -68,25 +88,33 @@
   other hardware/macOS.
 
 ## Window
-- Level used: `kCGDesktopWindowLevel` (-2147483623), via
-  `CGWindowLevelForKey(.desktopWindow)`. AppKit `.desktop` constant is NOT
-  available in macOS 26 SDK → use CoreGraphics level directly.
+- **Level (FINAL): `kCGDesktopIconWindowLevel + 1` = -2147483602.**
+  BEFORE the fix: `kCGDesktopWindowLevel` (-2147483623) — widget invisible,
+  hidden under Finder's full-screen desktop window (-3603). AFTER: strictly
+  above Finder desktop & wallpaper; below normal windows. See DECISIONS D-006.
+- Candidate levels tested (env `MP_WINDOW_LEVEL`) and outcome:
+  - -2147483623 kCGDesktopWindowLevel → below Finder desktop → hidden (REJECTED)
+  - -2147483603 kCGDesktopIconWindowLevel → same layer as Finder, fragile (REJECTED)
+  - -2147483602 kCGDesktopIconWindowLevel + 1 → above Finder desktop (CHOSEN)
 - Frameless: styleMask [.borderless] → no title bar / traffic lights. ✓
-- Normal windows in front: verified with TextEdit — TextEdit (layer 0) above
-  widget (layer -2147483623). ✓
-- Draggable: `isMovableByWindowBackground = true` (standard AppKit; not
-  verified interactively — terminal lacks accessibility for synthetic drag).
+- Normal windows in front: layer 0 > widget -3602; verified with TextEdit. ✓
+- Drag: `isMovableByWindowBackground = true` (standard AppKit; not verified
+  interactively — terminal lacks accessibility for synthetic drag).
 - Persistence: frame saved to UserDefaults `MacPerformance.windowFrame`
   (NSStringFromRect) on windowDidMove; restored on launch. Verified: saved
   {{120,640},…} → restored X=120 (Y consistent, CG vs AppKit coords). ✓
 - Off-screen clamp: saved {9000,9000} → reset to default centered frame. ✓
 - Hidden from Dock: Info.plist LSUIElement=1 (no Dock icon). ✓
-- Quit: right-click context menu "Quit MacPerformance" (no Dock, so no menu bar
+- Quit: right-click context menu "Quit MacPerformance" (no Dock → no menu bar
   item). Not interactively tested (accessibility). Also `pkill -x MacPerformance`.
-- Spaces: collectionBehavior [.stationary]; desktop-level → behaves like
-  desktop icons. **Visual confirmation of Spaces change / Mission Control /
-  show-desktop still pending (manual).**
-- Open problems: none known; visual checks outstanding.
+- collectionBehavior: [.stationary, .canJoinAllSpaces, .ignoresCycle];
+  .fullScreenAuxiliary deliberately NOT set (must stay under fullscreen apps).
+  Launch-time behaviour verified; cross-Space / Mission Control / show-desktop
+  visual confirmation pending (manual).
+- Ordering call: `orderFrontRegardless()` in `show()` — shows WITHOUT activating
+  (LSUIElement accessory must not steal focus).
+- Debug: `MP_DEBUG=1` prints level rawValue, frame, isVisible, occlusionState,
+  screen; `MP_WINDOW_LEVEL=<raw int>` overrides level (default = final value).
 
 ## UI
 - Design status: NOT STARTED (Milestone E).
@@ -95,11 +123,10 @@
 - To refine: everything (pending)
 
 ## Next Actions
-1. [MILESTONE D] NSWindow desktop behaviour (frameless, drag, persist, level,
-   Spaces/Mission Control tests).
-2. [MILESTONE E] Widget design polish.
-3. [MILESTONE F] Sparklines CPU/GPU (30s history).
-4. [MILESTONE G] Overhead test + final docs + git commits.
+1. [DONE/FIXED] NSWindow desktop level fixed (kCGDesktopIconWindowLevel + 1).
+2. User visual confirmation: widget visible over desktop, under normal windows,
+   drag, Spaces / Mission Control / show-desktop.
+3. Any adjustments after feedback; final commit.
 
 ## Important Commands
 - Build: `swift build -c release`
@@ -110,11 +137,17 @@
 - Cleanup: `swift package clean`
 
 ## Known Issues
-- GPU not yet verified under controlled load (next: Metal workload test).
 - Screen capture unavailable in this shell (no screen-recording permission) —
-  UI verified only via process + debug logs so far.
+  UI verified only via process, window enumeration + debug logs. Final visual
+  confirmation ("widget visible over desktop, under normal windows", Spaces/
+  Mission Control/show-desktop, drag) is the user's manual step.
+- Overhead numbers (RSS ~74 MB; avg CPU ~1.9%) measured pre-fix; re-measure if
+  needed after final user feedback (level change does not affect them).
 
 ## Last Verified
+- Window layering after fix: widget -3602 above Finder desktop -3603 and
+  wallpaper -3624; below normal windows (TextEdit, 0). ✓
+- Window on-screen, isVisible, occlusionState visible, screen attached. ✓
 - CPU load test (10×`yes`): idle→~100%→idle. ✓
 - RAM idle: ~9.3 GB/16 GB (58%). ✓
 - GPU idle (no load): 10–21%.
