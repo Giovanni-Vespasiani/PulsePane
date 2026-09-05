@@ -4,28 +4,33 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** A (environment + project scaffold) — in progress.
-- **Completed:** Project directory created at `~/Projects/MacPerformance`; git
-  initialized; initial documentation files created; source layout scaffolded.
-- **Partially completed:** Xcode CLI is broken (needs `sudo xcode-select -s`).
-- **Not started:** B (CPU/RAM), C (GPU), D (window), E (design), F (sparklines),
-  G (overhead/final).
+- **Milestone:** A (environment + project scaffold + first compilable .app) — COMPLETE.
+- **Completed:** Environment fixed (full Xcode active); project at
+  ~/Projects/MacPerformance; git initialized; initial docs; SPM package;
+  build/run scripts; first **compilable & launchable** MacPerformance.app
+  (debug), verified running as a process.
+- **Partially completed:** Native window/desktop behaviour pending (Milestone D).
+- **Not started:** B (CPU/RAM in code), C (GPU), D (window), E (design), F (sparklines),
+  G (overhead/final docs).
 
 ## Environment
-- Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install present)
-- Swift: 6.1.2 (swift-driver 1.120.5), target arm64-apple-macosx16.0
+- Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
+- Swift: 6.3.3 (swift-driver 1.148.6), target arm64-apple-macosx26.0
+  (NOTE: full-Xcode toolchain; CLT previously reported 6.1.2)
 - macOS: 26.6.2 (Build 25G83)
-- Architecture: Apple Silicon — Apple M4, 10 cores (4P + 6E), 16 GB unified
-  (LPDDR5). MacBook Air Mac16,13.
-- Developer directory (current, BROKEN): `/Library/Developer/CommandLineTools`
-- Required fix: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
-- SDK detected: Xcode ships MacOSX26.5.sdk + MacOSX26.sdk (use `xcrun --show-sdk-path`)
+- Architecture: Apple Silicon — Apple M4, 10 logical CPUs (4P + 6E), 16 GB
+  unified (LPDDR5). MacBook Air Mac16,13.
+- Developer directory (CURRENT, FIXED): `/Applications/Xcode.app/Contents/Developer`
+- SDK resolved: `/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk`
+- logicalcpu: 10; hw.memsize: 17179869184 (16 GB)
 
 ## Build
-- Build command: `swift build -c release` then `scripts/make-app.sh` (or `scripts/build.sh`)
-- Last result: NOT YET BUILT (blocked on sudo fix for full Xcode CLI)
-- Path of .app: `~/.build/release/MacPerformance.app` (after script) — pending
-- Warnings/errors: none yet (no build yet)
+- Build command: `scripts/build.sh` (swift build + make-app.sh); or
+  `swift build -c debug` + `./scripts/make-app.sh debug`
+- Last result: SUCCESS (debug). App launched and verified as running process.
+  (Screenshot unavailable: terminal lacks screen-recording permission.)
+- Path of .app: `~/.build/debug/MacPerformance.app` (and `release` after scripts/build.sh)
+- Warnings/errors: none
 
 ## Metrics
 
