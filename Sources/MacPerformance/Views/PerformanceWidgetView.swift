@@ -1,6 +1,11 @@
 import SwiftUI
 
-/// Main widget view. Shows CPU / GPU / Memory with a dark, macOS-like layout.
+/// Main widget view. Dark, macOS-widget-style panel showing
+/// CPU / GPU / Memory with thin bars.
+///
+/// The panel draws its own rounded background (material over a dark tint)
+/// because the window itself is transparent and borderless. The window is
+/// forced to `.darkAqua` so the material stays dark regardless of system mode.
 struct PerformanceWidgetView: View {
     @StateObject private var model = PerformanceModel()
     @State private var monitor = SystemMonitor()
@@ -8,20 +13,35 @@ struct PerformanceWidgetView: View {
     private static let gbDivider = 1_073_741_824.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             header
             rows
         }
-        .padding(18)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .frame(width: 320)
+        .background(panelBackground, alignment: .top)
         .task { await monitor.run(model: model) }
+    }
+
+    /// Rounded translucent dark panel + subtle border + soft shadow.
+    private var panelBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color.black.opacity(0.42))
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(.regularMaterial)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 8)
     }
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("PERFORMANCE")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .kerning(1.5)
+                .kerning(1.8)
                 .foregroundStyle(.secondary)
             Spacer()
             Text("M4")
@@ -31,17 +51,19 @@ struct PerformanceWidgetView: View {
     }
 
     private var rows: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 13) {
             MetricRow(
                 label: "CPU",
                 value: String(format: "%.0f%%", model.stats.cpuUsage),
-                fraction: model.stats.cpuUsage / 100
+                fraction: model.stats.cpuUsage / 100,
+                spark: model.cpuHistory
             )
 
             MetricRow(
                 label: "GPU",
                 value: gpuValueText,
-                fraction: model.stats.gpuUsage.map { $0 / 100 }
+                fraction: model.stats.gpuUsage.map { $0 / 100 },
+                spark: model.gpuHistory
             )
 
             MetricRow(
@@ -52,7 +74,7 @@ struct PerformanceWidgetView: View {
                     : nil
             )
 
-            HStack(spacing: 2) {
+            HStack {
                 Text(memoryDetailText)
                     .font(.system(size: 10, design: .rounded))
                     .foregroundStyle(.tertiary)

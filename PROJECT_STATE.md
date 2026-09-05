@@ -4,12 +4,14 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** D (desktop window behaviour) — COMPLETE (programmatically verified).
-- **Completed:** A–D. Widget window: frameless, level kCGDesktopWindowLevel,
-  normal windows in front, position restore + off-screen clamp, LSUIElement.
+- **Milestone:** F (sparklines, 30-sample CPU/GPU history) — COMPLETE (verified
+  data pipeline under load; visual look pending user's eye).
+- **Completed:** A–F. Widget window: frameless, level kCGDesktopWindowLevel,
+  normal windows in front, position restore + off-screen clamp, LSUIElement;
+  dark material design; sparklines under CPU/GPU rows.
 - **Partially completed:** Design polish; visual confirmation of Spaces /
-  Mission Control / show-desktop pending (no screen access in this shell).
-- **Not started:** E (design), F (sparklines), G (overhead/final docs).
+  Mission Control / show-desktop and the final look (no screen access here).
+- **Not started:** G (overhead measurement, final docs, final commit).
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)

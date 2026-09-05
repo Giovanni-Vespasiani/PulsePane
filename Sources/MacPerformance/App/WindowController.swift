@@ -33,6 +33,9 @@ final class WindowController: NSObject, NSWindowDelegate {
         window.level = NSWindow.Level(
             rawValue: Int(CGWindowLevelForKey(.desktopWindow))
         )
+
+        // Always render the widget in dark, regardless of system appearance.
+        window.appearance = NSAppearance(named: .darkAqua)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false

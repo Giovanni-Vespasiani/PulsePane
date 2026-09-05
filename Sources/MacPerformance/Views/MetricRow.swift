@@ -1,11 +1,12 @@
 import SwiftUI
 
 /// Renders a single metric: label on the left, value on the right, and a
-/// thin, discrete progress bar below.
+/// thin, discrete progress bar below. Optionally a hairline sparkline.
 struct MetricRow: View {
     let label: String
     let value: String
     let fraction: Double?
+    var spark: [Double?] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -20,6 +21,11 @@ struct MetricRow: View {
             }
 
             bar
+
+            if !spark.isEmpty {
+                Sparkline(values: spark)
+                    .opacity(0.6)
+            }
         }
     }
 
