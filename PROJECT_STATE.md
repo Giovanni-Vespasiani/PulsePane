@@ -4,12 +4,12 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** C (GPU empirical verification) — COMPLETE. GPUReader VERIFIED
-  under controlled Metal load.
-- **Completed:** A, B, C. GPU counter `Device Utilization %` confirmed to track
-  real load on this M4 (idle 16–20% → 94–100% under Metal compute → back to ~18%).
-- **Partially completed:** Window behaviour / design pending.
-- **Not started:** D (window), E (design), F (sparklines), G (overhead/final docs).
+- **Milestone:** D (desktop window behaviour) — COMPLETE (programmatically verified).
+- **Completed:** A–D. Widget window: frameless, level kCGDesktopWindowLevel,
+  normal windows in front, position restore + off-screen clamp, LSUIElement.
+- **Partially completed:** Design polish; visual confirmation of Spaces /
+  Mission Control / show-desktop pending (no screen access in this shell).
+- **Not started:** E (design), F (sparklines), G (overhead/final docs).
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
@@ -69,14 +69,25 @@
   other hardware/macOS.
 
 ## Window
-- Level used: NOT SET yet (Milestone D). Planned empirical determination.
-- Finder behaviour: N/A
-- Normal windows in front: N/A
-- Spaces: N/A
-- Mission Control: N/A
-- Drag: N/A
-- Persistence: N/A
-- Open problems: none yet
+- Level used: `kCGDesktopWindowLevel` (-2147483623), via
+  `CGWindowLevelForKey(.desktopWindow)`. AppKit `.desktop` constant is NOT
+  available in macOS 26 SDK → use CoreGraphics level directly.
+- Frameless: styleMask [.borderless] → no title bar / traffic lights. ✓
+- Normal windows in front: verified with TextEdit — TextEdit (layer 0) above
+  widget (layer -2147483623). ✓
+- Draggable: `isMovableByWindowBackground = true` (standard AppKit; not
+  verified interactively — terminal lacks accessibility for synthetic drag).
+- Persistence: frame saved to UserDefaults `MacPerformance.windowFrame`
+  (NSStringFromRect) on windowDidMove; restored on launch. Verified: saved
+  {{120,640},…} → restored X=120 (Y consistent, CG vs AppKit coords). ✓
+- Off-screen clamp: saved {9000,9000} → reset to default centered frame. ✓
+- Hidden from Dock: Info.plist LSUIElement=1 (no Dock icon). ✓
+- Quit: right-click context menu "Quit MacPerformance" (no Dock, so no menu bar
+  item). Not interactively tested (accessibility). Also `pkill -x MacPerformance`.
+- Spaces: collectionBehavior [.stationary]; desktop-level → behaves like
+  desktop icons. **Visual confirmation of Spaces change / Mission Control /
+  show-desktop still pending (manual).**
+- Open problems: none known; visual checks outstanding.
 
 ## UI
 - Design status: NOT STARTED (Milestone E).
