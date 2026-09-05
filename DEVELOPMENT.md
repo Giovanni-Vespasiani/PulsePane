@@ -90,7 +90,13 @@ Cross-check our "used = active + wired + compressed" against `vm_stat` /
 No scrolling/animation as proof. Build a small throwaway Metal workload, verify:
 idle → low value; workload → significantly higher; end → returns down. Then
 remove/terminate all temporary artifacts.
-Throwaway Metal test source lives under `scripts/` and is removed after Milestone C.
+
+Verified approach used in Milestone C (recorded for future re-runs):
+- A temporary Metal compute stress (kernel: per-thread sin/sqrt/cos loop, grid
+  2^22 threads, ~300 iterations, dispatched in a tight loop) compiled as a CLI
+  with `swiftc -framework Metal -framework Foundation` and run for ~8 s.
+- Result on this M4 with `Device Utilization %`: idle 16–20% → 94–100% under
+  load → back to ~18% after stop. Workload and binary removed after the test.
 
 ## Notes for continuing development
 - Keep sampling off the main thread; publish results on `@MainActor`.

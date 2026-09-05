@@ -4,14 +4,12 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** B (CPU + RAM + 1s refresh) — COMPLETE, values verified on real M4.
-- **Completed:** A (env + first .app) and B: CPUReader, MemoryReader, SystemMonitor
-  (1s), PerformanceModel, MetricSampler, widget view (placeholder styling). CPU
-  load test passed (idle→load→idle). RAM coherent with vm_stat.
-- **Partially completed:** GPU reader implemented but NOT yet empirically verified
-  under load (Milestone C). Window/design pending.
-- **Not started:** C (GPU verification), D (window), E (design), F (sparklines),
-  G (overhead/final docs).
+- **Milestone:** C (GPU empirical verification) — COMPLETE. GPUReader VERIFIED
+  under controlled Metal load.
+- **Completed:** A, B, C. GPU counter `Device Utilization %` confirmed to track
+  real load on this M4 (idle 16–20% → 94–100% under Metal compute → back to ~18%).
+- **Partially completed:** Window behaviour / design pending.
+- **Not started:** D (window), E (design), F (sparklines), G (overhead/final docs).
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
@@ -56,15 +54,19 @@
 ### GPU
 - Implementation: DONE (GPUReader.swift reads `PerformanceStatistics` from
   `IOAccelerator` via public IORegistryEntryCreateCFProperty).
-- **Empirical verification under load: PENDING (Milestone C).**
+- **Empirical verification under load: DONE (Milestone C passed).**
 - IORegistry service: 1× IOAccelerator; class `AGXAcceleratorG16G`;
   CFBundleIdentifier `com.apple.AGXG16G`; IONameMatched `gpu,t8132`.
 - Properties found (PerformanceStatistics): `Device Utilization %`,
   `Renderer Utilization %`, `Tiler Utilization %`.
-- Counter precedence: Device % → Renderer % → Tiler %.
-- Idle samples without load: GPU 10–21 % (rest activity of the compositor).
-- Test performed: none under controlled load yet. Must build a throwaway Metal
-  workload and confirm idle→high→idle, then remove artifacts.
+- Counter chosen: `Device Utilization %` (fallbacks Renderer % → Tiler %).
+- Test performed (2026-09-05): temporary Metal compute stress (2^22 grid,
+  ~300 iters/thread, tight loop, 8 s). Observed: idle 16–20% → 94–100% under
+  load → back to ~18% after workload ended. Artifacts removed afterwards.
+- Result: VERIFIED / WORKING on this M4.
+- Stability/limitations: driver-provided keys ("Device Utilization %" etc.) are
+  NOT a documented stable Apple API; isolated in GPUReader.swift. May change on
+  other hardware/macOS.
 
 ## Window
 - Level used: NOT SET yet (Milestone D). Planned empirical determination.
@@ -83,13 +85,11 @@
 - To refine: everything (pending)
 
 ## Next Actions
-1. [MILESTONE C] GPU empirical verification: throwaway Metal compute workload;
-   observe idle→high→idle on the chosen counter; then finalize/remove artifacts.
-2. [MILESTONE D] NSWindow desktop behaviour (frameless, drag, persist, level,
+1. [MILESTONE D] NSWindow desktop behaviour (frameless, drag, persist, level,
    Spaces/Mission Control tests).
-3. [MILESTONE E] Widget design polish.
-4. [MILESTONE F] Sparklines CPU/GPU (30s history).
-5. [MILESTONE G] Overhead test + final docs + git commits.
+2. [MILESTONE E] Widget design polish.
+3. [MILESTONE F] Sparklines CPU/GPU (30s history).
+4. [MILESTONE G] Overhead test + final docs + git commits.
 
 ## Important Commands
 - Build: `swift build -c release`
