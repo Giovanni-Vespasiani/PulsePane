@@ -4,13 +4,13 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** A (environment + project scaffold + first compilable .app) — COMPLETE.
-- **Completed:** Environment fixed (full Xcode active); project at
-  ~/Projects/MacPerformance; git initialized; initial docs; SPM package;
-  build/run scripts; first **compilable & launchable** MacPerformance.app
-  (debug), verified running as a process.
-- **Partially completed:** Native window/desktop behaviour pending (Milestone D).
-- **Not started:** B (CPU/RAM in code), C (GPU), D (window), E (design), F (sparklines),
+- **Milestone:** B (CPU + RAM + 1s refresh) — COMPLETE, values verified on real M4.
+- **Completed:** A (env + first .app) and B: CPUReader, MemoryReader, SystemMonitor
+  (1s), PerformanceModel, MetricSampler, widget view (placeholder styling). CPU
+  load test passed (idle→load→idle). RAM coherent with vm_stat.
+- **Partially completed:** GPU reader implemented but NOT yet empirically verified
+  under load (Milestone C). Window/design pending.
+- **Not started:** C (GPU verification), D (window), E (design), F (sparklines),
   G (overhead/final docs).
 
 ## Environment
@@ -35,32 +35,36 @@
 ## Metrics
 
 ### CPU
-- Implementation: NOT STARTED. Planned: Mach `host_processor_info`
-  (PROCESSOR_CPU_LOAD_INFO), tick deltas (user/system/nice/idle).
-- Status: pending
-- Validation performed: none yet
-- Known issues: none yet
+- Implementation: DONE — Mach `host_processor_info` (PROCESSOR_CPU_LOAD_INFO),
+  tick deltas across user/system/nice/idle (CPUReader.swift).
+- Status: WORKING (verified).
+- Validation performed: controlled load with N=`sysctl hw.logicalcpu` (10) `yes`
+  processes → CPU went idle 0–15% → ~99–100% under load → back to ~12% after kill.
+  All test `yes` processes terminated afterwards.
+- Known issues: none.
 
 ### RAM
-- Implementation: NOT STARTED. Planned: `host_statistics64` vm_statistics64.
-- Formula to use: **used = active + wired + compressed** (excludes inactive/speculative/free).
-- Validation performed: idle computation done via `vm_stat` page size 16384:
-  active=357492, wired=132110, compressor occupied=150842 → approx 9.8 GB / 16 GB (~61%).
-- Known issues: none yet
+- Implementation: DONE — `host_statistics64` vm_statistics64 (MemoryReader.swift).
+- Formula used: **used = active + wired + compressed** pages × kernel page size;
+  total via `hw.memsize`. Excludes inactive/speculative/free. (Documented in
+  code + DECISIONS D-003.)
+- Validation performed: idle read 9.3–9.4 GB / 16 GB (58–59%), coherent with
+  the earlier vm_stat hand-computation (~9.8 GB). Used as design check, not a
+  byte-for-byte Activity Monitor replica.
+- Known issues: none.
 
 ### GPU
-- IORegistry service found: exactly one `IOAccelerator`-class service.
-- GPU class: `AGXAcceleratorG16G` (`MetalPluginName` = `AGXMetalG16G_B0`,
-  `IONameMatched` = `gpu,t8132`, `CFBundleIdentifier` = `com.apple.AGXG16G`).
-- Properties found (in `PerformanceStatistics`): `Device Utilization %`,
-  `Renderer Utilization %`, `Tiler Utilization %`, plus memory/split counters.
-  Also `AGCInfo` (submission/busy counters). Values observed fluctuating over time
-  (8→12→11→9) — evidence of liveness, NOT yet proof of tracking under load.
-- Counter chosen: TBD (priority: Device Utilization %, fallback Renderer/Tiler).
-- Tests performed: IORegistry enumeration + idle sampling only. **No load test yet.**
-- Result: NOT verified under load yet. Treat as UNVERIFIED until Milestone C.
-- Fallback: Renderer % / Tiler %; if none reliable → declare PARTIAL/UNKNOWN explicitly.
-- Stability/limitations: driver-dependent keys; not a documented stable Apple API.
+- Implementation: DONE (GPUReader.swift reads `PerformanceStatistics` from
+  `IOAccelerator` via public IORegistryEntryCreateCFProperty).
+- **Empirical verification under load: PENDING (Milestone C).**
+- IORegistry service: 1× IOAccelerator; class `AGXAcceleratorG16G`;
+  CFBundleIdentifier `com.apple.AGXG16G`; IONameMatched `gpu,t8132`.
+- Properties found (PerformanceStatistics): `Device Utilization %`,
+  `Renderer Utilization %`, `Tiler Utilization %`.
+- Counter precedence: Device % → Renderer % → Tiler %.
+- Idle samples without load: GPU 10–21 % (rest activity of the compositor).
+- Test performed: none under controlled load yet. Must build a throwaway Metal
+  workload and confirm idle→high→idle, then remove artifacts.
 
 ## Window
 - Level used: NOT SET yet (Milestone D). Planned empirical determination.
@@ -79,15 +83,13 @@
 - To refine: everything (pending)
 
 ## Next Actions
-1. [BLOCKED] Run sudo command to fix Xcode CLI (single command, provided to user).
-2. Verify `xcode-select -p`, `xcodebuild -version`, `swift --version`.
-3. Create `Package.swift` + minimal app sources; build first compilable `.app`.
-4. Implement CPUReader + MemoryReader + SystemMonitor (1s); verify values.
-5. GPU controlled Metal load test → finalize GPUReader.
-6. Window behaviour (Milestone D).
-7. Design (Milestone E).
-8. Sparklines (Milestone F).
-9. Overhead test + final docs + git commits (Milestone G).
+1. [MILESTONE C] GPU empirical verification: throwaway Metal compute workload;
+   observe idle→high→idle on the chosen counter; then finalize/remove artifacts.
+2. [MILESTONE D] NSWindow desktop behaviour (frameless, drag, persist, level,
+   Spaces/Mission Control tests).
+3. [MILESTONE E] Widget design polish.
+4. [MILESTONE F] Sparklines CPU/GPU (30s history).
+5. [MILESTONE G] Overhead test + final docs + git commits.
 
 ## Important Commands
 - Build: `swift build -c release`
@@ -98,9 +100,11 @@
 - Cleanup: `swift package clean`
 
 ## Known Issues
-- Xcode CLI broken until sudo `xcode-select -s` is executed.
-- GPU not yet verified under load.
+- GPU not yet verified under controlled load (next: Metal workload test).
+- Screen capture unavailable in this shell (no screen-recording permission) —
+  UI verified only via process + debug logs so far.
 
 ## Last Verified
-- 2026-09-05 (session start): environment values above; GPU PerformanceStatistics
-  keys present and fluctuating; vm_stat memory counters sampled.
+- CPU load test (10×`yes`): idle→~100%→idle. ✓
+- RAM idle: ~9.3 GB/16 GB (58%). ✓
+- GPU idle (no load): 10–21%.
