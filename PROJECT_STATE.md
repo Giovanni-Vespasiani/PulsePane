@@ -4,14 +4,11 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone:** F (sparklines, 30-sample CPU/GPU history) — COMPLETE (verified
-  data pipeline under load; visual look pending user's eye).
-- **Completed:** A–F. Widget window: frameless, level kCGDesktopWindowLevel,
-  normal windows in front, position restore + off-screen clamp, LSUIElement;
-  dark material design; sparklines under CPU/GPU rows.
-- **Partially completed:** Design polish; visual confirmation of Spaces /
-  Mission Control / show-desktop and the final look (no screen access here).
-- **Not started:** G (overhead measurement, final docs, final commit).
+- **Milestone:** G (overhead measurement, final docs) — COMPLETE. All milestones A–G done.
+- **Self-overhead (measured):** resident ~74 MB RSS; avg CPU ~1.9% while sampling
+  at 1 Hz (includes 1 Hz SwiftUI redraw; measurement via `top -l 10`). Negligible.
+- **Remaining:** only MANUAL visual checkpoints — design look, drag feel, Spaces /
+  Mission Control / show-desktop behaviour (no screen access in this shell).
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
