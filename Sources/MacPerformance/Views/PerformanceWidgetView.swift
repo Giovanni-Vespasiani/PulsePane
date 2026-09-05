@@ -1,25 +1,103 @@
 import SwiftUI
 
-/// Main widget view. Dark, macOS-widget-style panel showing
-/// CPU / GPU / Memory with thin bars.
+/// v2 main widget view: a dark, Apple-widget-style glass panel.
+///
+/// Layout:
+///   header (MacPerformance + M4 badge)
+///   ── CPU (histogram + %)
+///   ── GPU (histogram + %)
+///   ── Memory (progress bar + % / GB)
+///   ── divider ──
+///   Network  ↑/↓    Disk  R/W    Power    Temperature
 ///
 /// The panel draws its own rounded background (material over a dark tint)
-/// because the window itself is transparent and borderless. The window is
-/// forced to `.darkAqua` so the material stays dark regardless of system mode.
+/// because the window is transparent and borderless. The window is forced to
+/// `.darkAqua` so the material stays dark regardless of system mode.
 struct PerformanceWidgetView: View {
     @StateObject private var model = PerformanceModel()
     @State private var monitor = SystemMonitor()
 
     private static let gbDivider = 1_073_741_824.0
+    private static let cpuColor = Color(red: 0.35, green: 0.55, blue: 1.0)      // calm blue
+    private static let gpuColor = Color(red: 0.55, green: 0.45, blue: 1.0)      // muted violet
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             header
-            rows
+                .padding(.bottom, 18)
+
+            MetricHistogramRow(
+                label: "CPU",
+                secondary: frequencyText,
+                percent: percentText(model.stats.cpuUsage),
+                history: model.cpuHistory,
+                color: Self.cpuColor
+            )
+            .padding(.bottom, 16)
+
+            MetricHistogramRow(
+                label: "GPU",
+                secondary: model.stats.gpuName ?? "—",
+                percent: gpuValueText,
+                history: gpuHistoryNumbers,
+                color: Self.gpuColor
+            )
+            .padding(.bottom, 16)
+
+            MetricProgressRow(
+                label: "Memory",
+                secondary: memoryDetailText,
+                percent: percentText(model.stats.memoryUsagePercent),
+                fraction: fractionText
+            )
+            .padding(.bottom, 9)
+
+            divider
+                .padding(.vertical, 10)
+
+            SecondaryMetricRow(
+                label: "Network",
+                values: [
+                    (prefix: "↑", text: model.stats.networkUploadBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—"),
+                    (prefix: "↓", text: model.stats.networkDownloadBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—")
+                ]
+            )
+            .padding(.vertical, 6)
+
+            SecondaryMetricRow(
+                label: "Disk",
+                values: [
+                    (prefix: "R", text: model.stats.diskReadBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—"),
+                    (prefix: "W", text: model.stats.diskWriteBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—")
+                ]
+            )
+            .padding(.vertical, 6)
+
+            HStack(spacing: 6) {
+                Text("Power")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text(model.stats.powerWatts.map { ByteRate.watts($0) } ?? "—")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+
+                Text("·")
+
+                Text("Temp")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(model.stats.socTemperatureCelsius.map { ByteRate.temperature($0) } ?? "—")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
+            .padding(.vertical, 6)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .frame(width: 320)
+        .padding(.vertical, 22)
+        .frame(width: 340)
         .background(panelBackground, alignment: .top)
         .task { await monitor.run(model: model) }
     }
@@ -27,74 +105,70 @@ struct PerformanceWidgetView: View {
     /// Rounded translucent dark panel + subtle border + soft shadow.
     private var panelBackground: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(Color.black.opacity(0.42))
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.regularMaterial)
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
         }
         .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 8)
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("PERFORMANCE")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .kerning(1.8)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MacPerformance")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(headerSubtitle)
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             Text("M4")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.white.opacity(0.1)))
         }
     }
 
-    private var rows: some View {
-        VStack(spacing: 13) {
-            MetricRow(
-                label: "CPU",
-                value: String(format: "%.0f%%", model.stats.cpuUsage),
-                fraction: model.stats.cpuUsage / 100,
-                spark: model.cpuHistory
-            )
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.1))
+            .frame(height: 1)
+    }
 
-            MetricRow(
-                label: "GPU",
-                value: gpuValueText,
-                fraction: model.stats.gpuUsage.map { $0 / 100 },
-                spark: model.gpuHistory
-            )
+    private var headerSubtitle: String {
+        model.stats.gpuName ?? "System Monitor"
+    }
 
-            MetricRow(
-                label: "MEMORY",
-                value: memoryValueText,
-                fraction: model.stats.memoryTotal > 0
-                    ? model.stats.memoryUsagePercent / 100
-                    : nil
-            )
-
-            HStack {
-                Text(memoryDetailText)
-                    .font(.system(size: 10, design: .rounded))
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-        }
+    private func percentText(_ value: Double) -> String {
+        String(format: "%.0f%%", value)
     }
 
     private var gpuValueText: String {
         guard let gpu = model.stats.gpuUsage else { return "—" }
-        return String(format: "%.0f%%", gpu)
+        return percentText(gpu)
     }
 
-    private var memoryValueText: String {
-        guard model.stats.memoryTotal > 0 else { return "—" }
-        return String(format: "%.0f%%", model.stats.memoryUsagePercent)
+    private var frequencyText: String {
+        guard let ghz = model.stats.cpuFrequencyGHz else { return "M4" }
+        return String(format: "%.2f GHz", ghz)
+    }
+
+    private var gpuHistoryNumbers: [Double] {
+        model.gpuHistory.map { $0 ?? 0 }
+    }
+
+    private var fractionText: Double? {
+        model.stats.memoryTotal > 0 ? model.stats.memoryUsagePercent / 100 : nil
     }
 
     private var memoryDetailText: String {
-        guard model.stats.memoryTotal > 0, model.stats.memoryUsed > 0 else { return "" }
+        guard model.stats.memoryTotal > 0, model.stats.memoryUsed > 0 else { return "—" }
         let used = Double(model.stats.memoryUsed) / Self.gbDivider
         let total = Double(model.stats.memoryTotal) / Self.gbDivider
         return String(format: "%.1f / %.0f GB", used, total)

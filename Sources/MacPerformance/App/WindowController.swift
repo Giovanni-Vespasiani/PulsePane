@@ -16,9 +16,6 @@ import SwiftUI
 final class WindowController: NSObject, NSWindowDelegate {
     let window: NSWindow
 
-    private static let frameKey = "MacPerformance.windowFrame"
-    static let defaultSize = NSSize(width: 320, height: 210)
-
     init(contentView: some View) {
         let contentRect = NSRect(origin: .zero, size: Self.defaultSize)
         window = NSWindow(
@@ -88,19 +85,36 @@ final class WindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Position persistence
 
+    /// v2 default window size (fixed by content; the panel is 340 wide).
+    static let defaultSize = NSSize(width: 340, height: 430)
+
+    /// Version tag written into the persisted frame string so a saved v1 frame
+    /// (320-wide panel, shorter) is not reused for the taller v2 layout. On v2
+    /// launch we always apply `defaultSize`; the saved origin is still used so
+    /// the user's placement survives.
+    private static let frameVersion = "v2"
+    private static let frameKey = "MacPerformance.windowFrame"
+
     /// Persists the current frame as an NSStringFromRect string.
     private func persistFrame() {
-        UserDefaults.standard.set(NSStringFromRect(window.frame), forKey: Self.frameKey)
+        let s = NSStringFromRect(window.frame)
+        UserDefaults.standard.set("\(Self.frameVersion)|\(s)", forKey: Self.frameKey)
     }
 
-    /// Returns the saved frame if it is still on a visible screen, otherwise a
-    /// sensible default (centered on the main screen).
+    /// Returns the saved location (size replaced by v2 default) if it is still
+    /// on a visible screen, otherwise a sensible default (centered).
     private func restoredFrame() -> NSRect {
-        guard let saved = UserDefaults.standard.string(forKey: Self.frameKey) else {
-            return defaultFrame()
+        let saved = UserDefaults.standard.string(forKey: Self.frameKey)
+        if let saved {
+            let parts = saved.split(separator: "|", maxSplits: 1)
+            if parts.count == 2, parts[0] == Self.frameVersion {
+                let rect = NSRectFromString(String(parts[1]))
+                let sized = NSRect(origin: rect.origin, size: Self.defaultSize)
+                return isOnAnyVisibleScreen(sized) ? sized : defaultFrame()
+            }
         }
-        let rect = NSRectFromString(saved)
-        return isOnAnyVisibleScreen(rect) ? rect : defaultFrame()
+        // v1 frame (unversioned) or invalid → default origin with v2 size.
+        return defaultFrame()
     }
 
     private func defaultFrame() -> NSRect {

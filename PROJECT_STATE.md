@@ -4,18 +4,26 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2 CHECKPOINT** — v2.0 branch of development started from working v1.
-- Visual reference (not required for v2 layout but recorded so it is not lost):
+- **V2 CHECKPOINT** — v2 implementation COMPLETE and running. Waiting at
+  **VISUAL CHECKPOINT** for the user's eye (terminal has no screen access).
+- Visual reference (recorded so it is not lost):
   `~/Documents/screenshot/Screenshot 2026-09-05 alle 21.00.47.png`
   (NOTE: this model cannot view images; v2 is driven by spec + pixel-probe data.
   Final visual judgement = user's eye at the VISUAL CHECKPOINT.)
-- Current milestone: V2-A (checkpoint committed) → V2-B/C metrics → V2-D/E/F UI → V2-G.
+- **Current V2 state (all verified programmatically):**
+  - Window: 340×395 pt, desktop-icon+1 level (-2147483602), on-screen, running.
+  - CPU/GPU/MEM regression OK. NET/DISK/PWR all live & responsive to load.
+  - TMP + CPU frequency: `nil` → `—` / "M4" (per DECISIONS D-011 / D-009).
+  - Overhead (release): ~78 MB RSS, ~0.6% CPU at 1 s sampling.
+  - Next: user visual review → spacing/color/layout refinements → commit v2.0.
 - **Completed (v1 baseline):** CPU/GPU/RAM real, desktop window at level
   kCGDesktopIconWindowLevel+1 (-2147483602), position persistence, LSUIElement,
   SPM build, docs, git.
-- **v2 additions target:** Network/Disk/Power/Temperature readers; GPU name label;
-  CPU frequency (nil expected); full UI redesign (histograms, progress bar,
-  secondary rows); window ~330–345×400–450.
+- **Completed (v2):** NetworkReader (getifaddrs delta), DiskReader
+  (IOBlockStorageDriver delta), PowerReader (AppleSmartBattery SystemLoad),
+  TemperatureReader (documented nil), GPU-name label, MiniHistogram +
+  MetricHistogramRow + MetricProgressRow + SecondaryMetricRow, full redesigned
+  PerformanceWidgetView, versioned frame persistence (D-014), docs updated.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
@@ -31,10 +39,10 @@
 ## Build
 - Build command: `scripts/build.sh` (swift build + make-app.sh); or
   `swift build -c debug` + `./scripts/make-app.sh debug`
-- Last result: SUCCESS (debug) — window level FIXED to -2147483602, verified.
-  App launched and verified as running process.
+- Last result: **SUCCESS (release v2)** — window 340×395 at level -2147483602,
+  launched and verified running.
   (Screenshot unavailable: terminal lacks screen-recording permission.)
-- Path of .app: `~/.build/debug/MacPerformance.app` (and `release` after scripts/build.sh)
+- Path of .app: `~/.build/release/MacPerformance.app`
 - Warnings/errors: none
 
 ## Metrics
@@ -75,6 +83,31 @@
   NOT a documented stable Apple API; isolated in GPUReader.swift. May change on
   other hardware/macOS.
 
+### Network (v2)
+- Implementation: DONE — NetworkReader.swift: `getifaddrs`, sums AF_LINK
+  interface counters (IFF_UP, excludes `lo`/`awdl`/`llw`/`utun`/`ipsec`/`gif`/
+  `stf`), 1 s delta → upload/download bytes/s.
+- Validation: idle ~0 B/s; curl download → `↓ 253 KB/s`; `dd` write → `↑`
+  responds. VERIFIED.
+
+### Disk (v2)
+- Implementation: DONE — DiskReader.swift: IOKit `IOBlockStorageDriver`
+  `Statistics` (physical level only: requires `Total Time (Write)` marker to
+  avoid APFS double-count), 1 s delta → read/write bytes/s.
+- Validation: idle ~0 B/s; `dd if=/dev/zero of=/tmp/ddtest.bin bs=1m count=200`
+  → `W 196.4 MB/s`. VERIFIED.
+
+### Power (v2)
+- Implementation: DONE — PowerReader.swift: `AppleSmartBattery` →
+  `PowerTelemetryData` → `SystemLoad` (mW) /1000 → watts, `nil` on error.
+- Validation: idle ≈5.9 W; 10×`yes` ≈8.6 W (telemetry, may lag). Later runs on
+  warm system read steady ~8.4 W — reflects system state. VERIFIED (returns live
+  SystemLoad).
+
+### Temperature / CPU frequency (v2)
+- TemperatureReader.swift: `celsius()` → `nil` (documented; DECISIONS D-011).
+- CPU freq: `nil` (DECISIONS D-009). UI shows `—` and "M4". EXPECTED, not a bug.
+
 ## Window
 - **Level (FINAL): `kCGDesktopIconWindowLevel + 1` = -2147483602.**
   BEFORE the fix: `kCGDesktopWindowLevel` (-2147483623) — widget invisible,
@@ -84,37 +117,45 @@
   - -2147483623 kCGDesktopWindowLevel → below Finder desktop → hidden (REJECTED)
   - -2147483603 kCGDesktopIconWindowLevel → same layer as Finder, fragile (REJECTED)
   - -2147483602 kCGDesktopIconWindowLevel + 1 → above Finder desktop (CHOSEN)
+- **Size (v2): 340×395 pt** (content-defined; width fixed 340).
 - Frameless: styleMask [.borderless] → no title bar / traffic lights. ✓
 - Normal windows in front: layer 0 > widget -3602; verified with TextEdit. ✓
 - Drag: `isMovableByWindowBackground = true` (standard AppKit; not verified
   interactively — terminal lacks accessibility for synthetic drag).
-- Persistence: frame saved to UserDefaults `MacPerformance.windowFrame`
-  (NSStringFromRect) on windowDidMove; restored on launch. Verified: saved
-  {{120,640},…} → restored X=120 (Y consistent, CG vs AppKit coords). ✓
-- Off-screen clamp: saved {9000,9000} → reset to default centered frame. ✓
+- Persistence: **versioned** `MacPerformance.windowFrame = "v2|<NSStringFromRect>"`
+  (DECISIONS D-014); origin reused on restore, size always v2 default. ✓
+- Off-screen clamp: saved off-screen rect → reset to default centered frame. ✓
 - Hidden from Dock: Info.plist LSUIElement=1 (no Dock icon). ✓
-- Quit: right-click context menu "Quit MacPerformance" (no Dock → no menu bar
-  item). Not interactively tested (accessibility). Also `pkill -x MacPerformance`.
+- Quit: right-click context menu "Quit MacPerformance". Also `pkill -x MacPerformance`.
 - collectionBehavior: [.stationary, .canJoinAllSpaces, .ignoresCycle];
   .fullScreenAuxiliary deliberately NOT set (must stay under fullscreen apps).
-  Launch-time behaviour verified; cross-Space / Mission Control / show-desktop
-  visual confirmation pending (manual).
-- Ordering call: `orderFrontRegardless()` in `show()` — shows WITHOUT activating
-  (LSUIElement accessory must not steal focus).
+- Ordering call: `orderFrontRegardless()` in `show()`.
 - Debug: `MP_DEBUG=1` prints level rawValue, frame, isVisible, occlusionState,
-  screen; `MP_WINDOW_LEVEL=<raw int>` overrides level (default = final value).
+  screen AND every metric (`NET`/`DISK`/`PWR`/`TMP`);
+  `MP_WINDOW_LEVEL=<raw int>` overrides level (default = final value).
 
-## UI
-- Design status: NOT STARTED (Milestone E).
-- Dimensions (target): ~300–340 wide × 170–220 high (medium widget).
-- Elements: planned — header, CPU/GPU/MEMORY rows, thin bars.
-- To refine: everything (pending)
+## UI (v2)
+- Design status: IMPLEMENTED (build 5b0b0d4..; running on desktop) — awaiting
+  user's VISUAL CHECKPOINT.
+- Dimensions: 340×395 pt (spec ~320–345×400–450 — close; adjustable).
+- Elements: header "MacPerformance" + subtitle + M4 capsule badge; CPU row
+  (label, sub-label, 22-bar MiniHistogram, %); GPU row (same, "Apple GPU"
+  sub-label); Memory row (label, GB text, %, full-width thin progress bar);
+  divider; Network ↑/↓ row; Disk R/W row; Power+Temp row.
+- Colors: CPU calm blue, GPU muted violet, monospaced digits, darkAqua forced
+  material over dark-blue tint, corner radius 28, subtle 0.5pt border.
+- To refine: everything visual (pending user's eye).
 
 ## Next Actions
-1. [DONE/FIXED] NSWindow desktop level fixed (kCGDesktopIconWindowLevel + 1).
-2. User visual confirmation: widget visible over desktop, under normal windows,
-   drag, Spaces / Mission Control / show-desktop.
-3. Any adjustments after feedback; final commit.
+1. [DONE] v2 checkpoint + WindowController fixes (D-014)
+2. [DONE] v2 readers (Network/Disk/Power/Temperature) + sampler wiring
+3. [DONE] v2 UI components + full panel redesign
+4. [DONE] Tests: CPU/GPU/RAM regression, NET/DISK/PWR load response, TMP nil
+5. [DONE] Overhead measured (78 MB RSS / 0.6% CPU release)
+6. [DONE] Docs updated (README/ARCHITECTURE/DECISIONS/DEVELOPMENT/PROJECT_STATE)
+7. **User VISUAL CHECKPOINT** — look at the widget; give feedback (spacing,
+   colors, shapes, layout).
+8. Adjust per feedback; final commit of v2.0.
 
 ## Important Commands
 - Build: `swift build -c release`
@@ -127,15 +168,18 @@
 ## Known Issues
 - Screen capture unavailable in this shell (no screen-recording permission) —
   UI verified only via process, window enumeration + debug logs. Final visual
-  confirmation ("widget visible over desktop, under normal windows", Spaces/
+  confirmation ("widget visible over desktop, layout looks right", Spaces/
   Mission Control/show-desktop, drag) is the user's manual step.
-- Overhead numbers (RSS ~74 MB; avg CPU ~1.9%) measured pre-fix; re-measure if
-  needed after final user feedback (level change does not affect them).
+- Overhead measured v2 release: ~78 MB RSS, ~0.6% CPU (v1 was ~74 MB / ~1.9%).
+- Temperature (SoC) and CPU frequency intentionally nil (DECISIONS D-011/D-009) —
+  UI shows `—` / "M4". Not bugs.
 
 ## Last Verified
-- Window layering after fix: widget -3602 above Finder desktop -3603 and
-  wallpaper -3624; below normal windows (TextEdit, 0). ✓
-- Window on-screen, isVisible, occlusionState visible, screen attached. ✓
-- CPU load test (10×`yes`): idle→~100%→idle. ✓
+- v2 widget 340×395 pt at level -2147483602, on-screen (CGWindowList), running. ✓
+- CPU load test (10×`yes`): idle→~99.7%→idle. ✓
 - RAM idle: ~9.3 GB/16 GB (58%). ✓
-- GPU idle (no load): 10–21%.
+- GPU idle (no load): 10–21%; under Metal load 94–100% (Milestone C). ✓
+- NET: curl download → `↓ 253 KB/s`; idle ~0. ✓
+- DISK: `dd` write → `W 196.4 MB/s`; idle ~0. ✓
+- PWR: idle ≈5.9 W; under load ≈8.6–8.4 W (telemetry, may lag). ✓
+- TMP: `—` expected (nil). CPU freq: "M4" sub-label expected (nil). ✓

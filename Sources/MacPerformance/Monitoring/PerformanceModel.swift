@@ -8,9 +8,8 @@ import Combine
 /// so it can be handed to the background sampling task; correctness is
 /// guaranteed by the main-thread-only mutation convention.
 final class PerformanceModel: ObservableObject, @unchecked Sendable {
-    /// Rolling history for mini sparklines (last ~30 samples). GPU history keeps
-    /// `nil` entries when the GPU was unreadable, so the line visibly gaps.
-    static let historySize = 30
+    /// v2 histograms show 22 bars (~22 s of history at 1 Hz).
+    static let historySize = 22
 
     @Published private(set) var stats: SystemStats = .empty
     @Published private(set) var cpuHistory: [Double] = []
@@ -20,8 +19,12 @@ final class PerformanceModel: ObservableObject, @unchecked Sendable {
     func update(_ snapshot: SystemStats) {
         stats = snapshot
         cpuHistory.append(snapshot.cpuUsage)
-        if cpuHistory.count > Self.historySize { cpuHistory.removeFirst(cpuHistory.count - Self.historySize) }
+        if cpuHistory.count > Self.historySize {
+            cpuHistory.removeFirst(cpuHistory.count - Self.historySize)
+        }
         gpuHistory.append(snapshot.gpuUsage)
-        if gpuHistory.count > Self.historySize { gpuHistory.removeFirst(gpuHistory.count - Self.historySize) }
+        if gpuHistory.count > Self.historySize {
+            gpuHistory.removeFirst(gpuHistory.count - Self.historySize)
+        }
     }
 }

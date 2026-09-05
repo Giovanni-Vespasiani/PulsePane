@@ -145,5 +145,105 @@ Decision, Motivation, Alternatives considered, Why rejected, Consequences / trad
 - **Motivation:** New project; no technical reason to force Swift 5.
 - **Consequences / trade-offs:** Must satisfy Swift 6 strict concurrency (Sendable,
   @MainActor) as errors arise.
-```
+
+---
+
+## D-009: CPU frequency is not shown — no reliable non-privileged API (v2)
+
+- **Decision:** `cpuFrequencyGHz` is `nil`; the UI shows `—`.
+- **Motivation (investigated 2026-09-05, Apple M4 / macOS 26.6.2):** there is **no
+  non-privileged API** for the *current live* CPU frequency. `hw.cpufrequency`/
+  `hw.cpufrequency_max`/`min` report nothing on Apple Silicon; `pmset -g
+  therm`/`processor_usage` need root; Apple Silicon exposes no public
+  "boost/clockspeed" knob. Fabricated/per-core guesses would violate the
+  honesty rule.
+- **Alternatives considered:** reading `hw.cpufrequency*`, `sysctl machdep`, the
+  private `IOReport` CPU frequency channels.
+- **Why rejected:** unavailable without privileges / private API.
+- **Consequences / trade-offs:** shows "M4" as the CPU sub-label instead of a
+  frequency. If a public API appears, this is a one-line change in MetricSampler.
+
+---
+
+## D-010: Power (watts) from AppleSmartBattery PowerTelemetryData.SystemLoad (v2)
+
+- **Decision:** `powerWatts = SystemLoad / 1000` read from IOKit service
+  `AppleSmartBattery` → `PowerTelemetryData` → `SystemLoad`, then divided by 1000
+  on the assumption the value is milliwatts.
+- **Motivation:** live, real, non-privileged system power estimate from Apple's
+  own telemetry. Validated on this M4: idle ≈ 5894 (≈5.9 W), under 10×`yes`
+  ≈ 8617 (≈8.6 W) — magnitude and delta-to-load both plausible for this MacBook
+  Air.
+- **Unit reasoning:** the raw magnitude (thousands, ~5–9 W typical) is consistent
+  with milliwatts and incoherent with any other unit. Cross-validated against the
+  boot-time `AccumulatedSystemLoad / SystemLoadAccumulatorCount` average.
+- **Alternatives considered:** `ioreg` subprocess (rejected: subprocess per tick
+  banned), energy graph via private APIs (rejected).
+- **Consequences / trade-offs:** it is Apple's telemetry estimate, not a lab
+  power meter; label it as an estimate. Reader isolated in PowerReader.
+
+---
+
+## D-011: SoC temperature is nil — no clean non-privileged API found (v2)
+
+- **Decision:** `socTemperatureCelsius = nil`; UI shows `—`. The reader exists
+  (TemperatureReader) as the single place where a future clean API would go.
+- **Motivation (investigated 2026-09-05, Apple M4 / macOS 26.6.2):**
+  - `AppleSmartBattery` → `Temperature` (≈3069 deci-K ≈ 33.7 °C) is a *battery*
+    temperature, not the SoC — we refuse to mislabel it.
+  - `AppleEmbeddedNVMeTemperatureSensor` is NVMe-controller temp, not SoC.
+  - `IOReport` `MSP0`/`MSP1` `"Temperature(0)"` channels exist but are only
+    reachable via the private `/usr/lib/libIOReport` dylib (no Swift module),
+    with unknown units (unit code 0) — too fragile to trust.
+- **Why rejected:** mislabeling battery/NVMe as SoC, or using a private dylib
+  with unverifiable units, both violate the honesty rule.
+- **Consequences / trade-offs:** no temperature shown in v2. Single-file change
+  when a public API appears.
+
+---
+
+## D-012: GPU label is a friendly static name (v2)
+
+- **Decision:** the GPU sub-label shows `"Apple GPU"` (from `gpuName`), not the
+  technical service string `AGXAcceleratorG16G`.
+- **Motivation:** an Apple-like widget must not print internal kernel/registry
+  device strings; `Apple GPU` is the user-facing manufacturer name for Apple
+  Silicon and stable.
+- **Alternatives considered:** showing the IOKit service class name.
+- **Why rejected:** technical, unfriendly, and it is an empirical driver string.
+- **Consequences / trade-offs:** we do not distinguish the exact GPU variant. If
+  desired later, a hardware-family table keyed off registry properties could map
+  to "M4" etc.
+
+---
+
+## D-013: v2 histograms are bars, sampled at 1 s, 22 samples (v2)
+
+- **Decision:** CPU/GPU history renders as a **MiniHistogram** of 22 thin bars
+  (replacing the v0.1 sparkline) at the existing 1 s sampling rate.
+- **Motivation:** match the reference visual style; a bar histogram reads as a
+  "live oscilloscope" better than a hairline sparkline at small sizes; preserves
+  the v0.1 energy budget (same 1 Hz sample rate, no new cost).
+- **Alternatives considered:** sparkline kept; smooth line-graph; WidgetKit.
+- **Why rejected:** WidgetKit cannot update at 1 Hz (D-005). The hairline
+  sparkline was replaced by bars to match the reference look.
+- **Consequences / trade-offs:** 22-sample history (~22 s). Bars are discrete by
+  design; no anti-aliased line smoothing.
+
+---
+
+## D-014: Window frame persistence is versioned; size always the v2 default (v2)
+
+- **Decision:** the persisted frame becomes `"v2|<NSStringFromRect>"`. On
+  restore, the **origin** is reused (if it is still on a visible screen) but the
+  **size is always reset** to the v2 default. Unknown/old (`v1`) pref → centered
+  default.
+- **Motivation:** a stale v1 frame (320×~260 layout) would shrink/misalign the
+  taller v2 panel; versioning cleanly arms one-migration without a data model.
+- **Alternatives considered:** ignoring saved location entirely; tracking frame
+  origin only.
+- **Why rejected:** ignoring origin loses the user's placement; origin-only is
+  the same thing — versioned string is the minimal explicit migration.
+- **Consequences / trade-offs:** first v2 launch is centered; from then on the
+  drag position is preserved. Future layout changes only bump the version tag.
 

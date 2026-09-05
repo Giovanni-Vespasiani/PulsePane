@@ -23,11 +23,23 @@ final class SystemMonitor: @unchecked Sendable {
                 if debug != nil {
                     let memPct = snapshot.memoryTotal > 0
                         ? String(format: "%.0f%%", snapshot.memoryUsagePercent)
-                        : "n/a"
+                        : "—"
+                    let net = [
+                        snapshot.networkUploadBytesPerSec.map { "↑\(ByteRate.string(bytesPerSec: $0))" },
+                        snapshot.networkDownloadBytesPerSec.map { "↓\(ByteRate.string(bytesPerSec: $0))" }
+                    ].compactMap { $0 }.joined(separator: "  ")
+                    let disk = [
+                        snapshot.diskReadBytesPerSec.map { "R\(ByteRate.string(bytesPerSec: $0))" },
+                        snapshot.diskWriteBytesPerSec.map { "W\(ByteRate.string(bytesPerSec: $0))" }
+                    ].compactMap { $0 }.joined(separator: "  ")
                     print(
                         "CPU \(String(format: "%.1f", snapshot.cpuUsage))%  " +
                         "GPU \(snapshot.gpuUsage.map { String(format: "%.1f%%", $0) } ?? "—")  " +
-                        "MEM \(String(format: "%.1f", Double(snapshot.memoryUsed) / 1_073_741_824))/\(String(format: "%.1f", Double(snapshot.memoryTotal) / 1_073_741_824)) GB \(memPct)"
+                        "MEM \(String(format: "%.1f", Double(snapshot.memoryUsed) / 1_073_741_824))/\(String(format: "%.1f", Double(snapshot.memoryTotal) / 1_073_741_824)) GB \(memPct)" +
+                        (net.isEmpty ? "" : "  NET \(net)") +
+                        (disk.isEmpty ? "" : "  DISK \(disk)") +
+                        (snapshot.powerWatts.map { "  PWR \(ByteRate.watts($0))" } ?? "  PWR —") +
+                        (snapshot.socTemperatureCelsius.map { "  TMP \(ByteRate.temperature($0))" } ?? "  TMP —")
                     )
                 }
             }

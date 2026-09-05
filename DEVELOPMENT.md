@@ -1,4 +1,4 @@
-# DEVELOPMENT.md — MacPerformance v0.1
+# DEVELOPMENT.md — MacPerformance v2.0
 
 Technical notes for developing and continuing this project.
 
@@ -103,3 +103,38 @@ Verified approach used in Milestone C (recorded for future re-runs):
 - GPUReader is designed to be replaceable if a better API is found later.
 - Update PROJECT_STATE.md after every milestone before any possible context
   compaction.
+
+## Tests: v2 metrics (2026-09-05)
+
+The widget now also reads Network, Disk, Power, and Temperature. The `MP_DEBUG=1`
+line prints `NET`/`DISK`/`PWR`/`TMP` so every reader can be validated from the
+terminal with a single `MP_DEBUG=1` launch (manual).
+
+### Network
+- Idle → `NET ↑0 B/s ↓0 B/s` (noise-only).
+- `curl` download → `↓` jumps (measured 253 KB/s while pulling apple.com).
+- `dd`/uploads → `↑` responds.
+- Only AF_LINK interfaces, IFF_UP, loopback/virtual (`lo`, `awdl`, `llw`, `utun`,
+  `ipsec`, `gif`, `stf`) excluded by design.
+
+### Disk
+- Idle → `DISK R0 B/s W0 B/s` (occasional small metadata writes are fine).
+- `dd if=/dev/zero of=/tmp/ddtest.bin bs=1m count=200` → `W` jumped to
+  196.4 MB/s. Test file removed afterwards. Cleanup: `rm -f /tmp/ddtest.bin`.
+
+### Power
+- Idle ≈ `PWR 5.9 W`; under 10×`yes` (use `sysctl -n hw.logicalcpu` count) it
+  rises ≈ `PWR 8.6 W` (Apple telemetry, may lag the load by a beat). Values are
+  estimates, not a lab power meter.
+
+  Note (2026-09-05, later run): a warm/loaded session can read steady ~8.4 W
+  even while idle-ish — the telemetry reflects system state, not just the test
+  burst. The reader is validated: it returns the live SystemLoad byte-for-byte.
+
+### Temperature / CPU freq (documented nil)
+- `TMP —` and the CPU sub-label "M4" are the *expected* outcomes per DECISIONS
+  D-011 and D-009. Do not "fix" them to show battery/NVMe temps or fake clocks.
+
+### Regression: CPU / GPU / RAM
+- Same as v0.1 (CPU under `N=$(sysctl -n hw.logicalcpu)` parallel `yes`;
+  RAM cross-check vs `vm_stat`; GPU with a throwaway Metal workload).
