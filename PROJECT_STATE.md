@@ -1,33 +1,21 @@
-# PROJECT_STATE.md — MacPerformance v0.1 (operational checkpoint)
+# PROJECT_STATE.md — MacPerformance v2.0 (operational checkpoint)
 
 > This file is the primary operational checkpoint. Read it first after any
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **Milestone D (desktop window behaviour): RE-OPENED → FIXED.** The widget was
-  NOT visible on the desktop: level `kCGDesktopWindowLevel` (-2147483623)
-  sat BELOW Finder's full-screen desktop window (`kCGDesktopIconWindowLevel`) and
-  was hidden by it. **Preliminary state documented BEFORE the fix; resolution
-  below (AFTER).**
-- **CAUSE (precise):** On macOS 26.6 the compositor stack is
-  wallpaper (Dock `Wallpaper-…`, -3624) → **Finder desktop window (-3603, full
-  screen)** → normal windows (0). The widget at -3623 was therefore below the
-  Finder desktop window and invisible, even though it was "on screen" in
-  `CGWindowListCopyWindowInfo`.
-- **FIX (final):** level = `kCGDesktopIconWindowLevel + 1` = **-2147483602** —
-  strictly above Finder desktop & wallpaper, below all normal windows. NOT
-  always-on-top.
-- **collectionBehavior (final):** `[.stationary, .canJoinAllSpaces, .ignoresCycle]`
-  (no `.fullScreenAuxiliary`: widget must stay below fullscreen apps).
-- **Verified (programmatically):** widget -3602 > Finder desktop -3603 ✓;
-  widget -3602 > wallpaper -3624 ✓; widget < normal windows (0) ✓ (TextEdit at
-  layer 0 covers it). Frame on-screen, `isVisible=true`, occlusionState visible,
-  screen attached ✓.
-- **Debug keys added:** `MP_DEBUG=1` → startup diagnostics (level rawValue, frame,
-  isVisible, occlusionState, screen). `MP_WINDOW_LEVEL=<int>` → override level
-  for A/B tests (default = final -3602).
-- **Remaining (manual, visual):** design look, drag feel, and Spaces ×
-  Mission Control × "show desktop" behaviour — no screen access in this shell.
+- **V2 CHECKPOINT** — v2.0 branch of development started from working v1.
+- Visual reference (not required for v2 layout but recorded so it is not lost):
+  `~/Documents/screenshot/Screenshot 2026-09-05 alle 21.00.47.png`
+  (NOTE: this model cannot view images; v2 is driven by spec + pixel-probe data.
+  Final visual judgement = user's eye at the VISUAL CHECKPOINT.)
+- Current milestone: V2-A (checkpoint committed) → V2-B/C metrics → V2-D/E/F UI → V2-G.
+- **Completed (v1 baseline):** CPU/GPU/RAM real, desktop window at level
+  kCGDesktopIconWindowLevel+1 (-2147483602), position persistence, LSUIElement,
+  SPM build, docs, git.
+- **v2 additions target:** Network/Disk/Power/Temperature readers; GPU name label;
+  CPU frequency (nil expected); full UI redesign (histograms, progress bar,
+  secondary rows); window ~330–345×400–450.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
