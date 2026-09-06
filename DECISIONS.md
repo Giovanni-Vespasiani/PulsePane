@@ -318,3 +318,13 @@ Decision, Motivation, Alternatives considered, Why rejected, Consequences / trad
   - v2.4.0 — public-readiness (license, docs, signing)
 - **Consequences / trade-offs:** Clear milestones; rebrand isolated in v2.1.
 
+---
+
+## D-R007: Final brand name = PulsePane
+
+- **Decision:** The final product name is **PulsePane**.
+- **Motivation:** Short, memorable, combines "pulse" (live heartbeat/1 Hz refresh) with "pane" (desktop panel/widget). Professional, Apple-like, suitable for macOS desktop utility.
+- **Alternatives considered:** Silhouette, Vitals, Pulse, Glance, Prism (top 5 shortlist).
+- **Why chosen:** Strongest overall brandability (combines live monitoring metaphor with desktop pane concept); clean bundle ID (`io.github.Giovanni-Vespasiani.pulsepane`); available GitHub repo name with minor qualifier; extensible for future Apple Silicon/AI metrics.
+- **Consequences / trade-offs:** "Pulse" alone has heavy collisions; "Pane" suffix differentiates and reinforces desktop widget positioning.
+

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build MacPerformance release .app (build + bundle assembly).
+# Build PulsePane release .app (build + bundle assembly).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

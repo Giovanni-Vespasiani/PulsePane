@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacPerformance",
+    name: "PulsePane",
     platforms: [
         .macOS(.v15)
     ],
     products: [
-        .executable(name: "MacPerformance", targets: ["MacPerformance"])
+        .executable(name: "PulsePane", targets: ["PulsePane"])
     ],
     targets: [
         .executableTarget(
-            name: "MacPerformance",
-            path: "Sources/MacPerformance",
+            name: "PulsePane",
+            path: "Sources/PulsePane",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),

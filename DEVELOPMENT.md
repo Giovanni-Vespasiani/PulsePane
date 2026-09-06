@@ -1,4 +1,4 @@
-# DEVELOPMENT.md — MacPerformance v2.0
+# DEVELOPMENT.md — PulsePane v2.1
 
 Technical notes for developing and continuing this project.
 
@@ -36,10 +36,10 @@ scripts/build.sh
 ```
 This runs `swift build -c release` and assembles:
 ```
-MacPerformance.app/
+PulsePane.app/
   Contents/
     Info.plist
-    MacOS/MacPerformance
+    MacOS/PulsePane
     Resources/
 ```
 SPM does not emit a `.app`; `scripts/make-app.sh` does the assembly.
@@ -48,7 +48,7 @@ SPM does not emit a `.app`; `scripts/make-app.sh` does the assembly.
 ```
 scripts/run.sh
 # or:
-open ~/.build/release/MacPerformance.app
+open ~/.build/release/PulsePane.app
 ```
 
 ## Debugging
@@ -106,7 +106,7 @@ Verified approach used in Milestone C (recorded for future re-runs):
 
 ## GitHub Remote
 - **Remote name:** `origin`
-- **URL:** `git@github-personal:Giovanni-Vespasiani/MacPerformance.git`
+- **URL:** `git@github-personal:Giovanni-Vespasiani/PulsePane.git`
 - **Visibility:** Private
 - **Auth:** SSH via `github-personal` host (ed25519 key `~/.ssh/id_ed25519_github_personal`)
 - **Account:** Giovanni-Vespasiani (personal)
@@ -121,7 +121,7 @@ Verified approach used in Milestone C (recorded for future re-runs):
 | v2.3.0 | Tests + CI |
 | v2.4.0 | Public-readiness release (license, docs, signing) |
 
-Current HEAD: v2.1 development (commit 502b036)
+Current HEAD: v2.1 development (commit 2bc87e3)
 
 ## Tests: v2 metrics (2026-09-05)
 

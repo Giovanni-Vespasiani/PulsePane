@@ -1,5 +1,5 @@
 #!/bin/bash
-# Assembles MacPerformance.app from the SwiftPM-built binary (debug).
+# Assembles PulsePane.app from the SwiftPM-built binary (debug).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -7,8 +7,8 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 CONFIG="${1:-debug}"
 BUILD_DIR="$ROOT/.build/$CONFIG"
-BIN="$BUILD_DIR/MacPerformance"
-APP="$BUILD_DIR/MacPerformance.app"
+BIN="$BUILD_DIR/PulsePane"
+APP="$BUILD_DIR/PulsePane.app"
 
 if [[ ! -f "$BIN" ]]; then
   echo "error: binary not found at $BIN. Run 'swift build -c $CONFIG' first." >&2
@@ -18,7 +18,7 @@ fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-cp "$BIN" "$APP/Contents/MacOS/MacPerformance"
+cp "$BIN" "$APP/Contents/MacOS/PulsePane"
 
 # Minimal Info.plist: hides from Dock, arm64, high-res.
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -27,17 +27,17 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>MacPerformance</string>
+    <string>PulsePane</string>
     <key>CFBundleDisplayName</key>
-    <string>MacPerformance</string>
+    <string>PulsePane</string>
     <key>CFBundleIdentifier</key>
-    <string>local.MacPerformance</string>
+    <string>io.github.Giovanni-Vespasiani.PulsePane</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>2.1.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1</string>
+    <string>2.1.0</string>
     <key>CFBundleExecutable</key>
-    <string>MacPerformance</string>
+    <string>PulsePane</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>

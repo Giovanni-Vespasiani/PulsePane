@@ -2,7 +2,7 @@ import SwiftUI
 import Darwin
 
 @main
-struct MacPerformanceApp: App {
+struct PulsePaneApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {

@@ -441,21 +441,83 @@ Current HEAD: `502b036` (v2.1 development started)
 | D-R004: Only rename public-facing identifiers; keep generic internal names | **DECIDED** |
 | D-R005: GitHub repo rename procedure documented; preserves history/tags | **DECIDED** |
 | D-R006: Versioning: v2.0.0 freeze → v2.1.0 rebrand → v2.2 hardening → v2.3 tests → v2.4 public | **DECIDED** |
-| D-R007: Final brand name = **PENDING USER APPROVAL** | **PENDING** |
+| D-R007: Final brand name = **PulsePane** | **DECIDED** |
 
 ---
 
 ## 15. DOCUMENTATION STATUS
 
-| Document | Updated for v2.1-A |
-|----------|-------------------|
-| PROJECT_STATE.md | ✓ (this update) |
-| DECISIONS.md | ✓ (decisions D-R001–D-R006 added below) |
-| REBRAND_PLAN.md | ✓ (this document) |
-| DEVELOPMENT.md | Pending (versioning notes) |
-| ARCHITECTURE.md | Not needed (no arch changes) |
-| README.md | Not yet (wait for name) |
+| Document | Updated for v2.1-A | Updated for v2.1-B |
+|----------|-------------------|-------------------|
+| PROJECT_STATE.md | ✓ | ✓ |
+| DECISIONS.md | ✓ | ✓ |
+| REBRAND_PLAN.md | ✓ | ✓ |
+| DEVELOPMENT.md | Pending | ✓ |
+| ARCHITECTURE.md | Not needed | ✓ |
+| README.md | Not yet | ✓ |
 
 ---
 
-*End of REBRAND_PLAN.md — Awaiting final name selection for v2.1-B*
+## 16. IMPLEMENTATION COMPLETION CHECKLIST (v2.1-B)
+
+- [x] Update `Package.swift` — package/product/target name → PulsePane
+- [x] Update `scripts/make-app.sh` — paths, Info.plist template (display name, bundle ID, executable)
+- [x] Update `scripts/build.sh` — comment
+- [x] Update `scripts/run.sh` — app paths
+- [x] Rename `MacPerformanceApp.swift` → `PulsePaneApp.swift`, update struct
+- [x] Update `WindowController.swift` — window title, quit menu, frame key, **legacy preference migration**
+- [x] Update `PerformanceWidgetView.swift` — header text "PulsePane"
+- [x] Update `MemoryReader.swift` — comment reference
+- [x] Update `README.md` — title, branding, paths
+- [x] Update `ARCHITECTURE.md` — header, module reference
+- [x] Update `DECISIONS.md` — D-R007 decision recorded
+- [x] Update `DEVELOPMENT.md` — header, paths, GitHub remote
+- [x] Update `PROJECT_STATE.md` — header, references, GitHub remote
+- [x] Update `REBRAND_PLAN.md` — completion status
+- [x] Rename local project directory `MacPerformance` → `PulsePane`
+- [x] Rename GitHub repository via web UI → `Giovanni-Vespasiani/PulsePane`
+- [x] Update local `origin` remote URL
+- [x] Commit as `feat: rebrand to PulsePane — v2.1.0`
+- [x] Tag `v2.1.0`
+- [x] Push tag and commit
+
+---
+
+## 17. FINAL IDENTITY SUMMARY
+
+| Element | Old (MacPerformance) | New (PulsePane) |
+|---------|---------------------|-----------------|
+| Product Name | MacPerformance | PulsePane |
+| Application Display Name | MacPerformance | PulsePane |
+| Executable | MacPerformance | PulsePane |
+| SPM Product | MacPerformance | PulsePane |
+| SPM Target | MacPerformance | PulsePane |
+| SPM Package Name | MacPerformance | PulsePane |
+| Bundle Identifier | `local.MacPerformance` | `io.github.Giovanni-Vespasiani.PulsePane` |
+| App Bundle | `MacPerformance.app` | `PulsePane.app` |
+| GitHub Repository | `Giovanni-Vespasiani/MacPerformance` | `Giovanni-Vespasiani/PulsePane` |
+| GitHub Remote URL | `git@github-personal:Giovanni-Vespasiani/MacPerformance.git` | `git@github-personal:Giovanni-Vespasiani/PulsePane.git` |
+| Window Title | MacPerformance | PulsePane |
+| Quit Menu Item | "Quit MacPerformance" | "Quit PulsePane" |
+| UserDefaults Frame Key | `MacPerformance.windowFrame` | `PulsePane.windowFrame` |
+| Migration Version Key | — | `PulsePane.migrationVersion` |
+| Local Project Path | `~/Projects/MacPerformance` | `~/Projects/PulsePane` |
+
+---
+
+## 18. LEGACY REFERENCES — INTENTIONAL REMAINING
+
+The following legacy references are intentionally preserved:
+
+| File | Reference | Reason |
+|------|-----------|--------|
+| `docs/REBRAND_PLAN.md` | Multiple "MacPerformance" | Historical rebrand documentation |
+| `DECISIONS.md` | D-001, D-005, D-006, D-009, D-010, D-011, D-012, D-013, D-014, D-R001–D-R006 | Historical architecture decisions |
+| `PROJECT_STATE.md` | Historical v2.0/v1 references | Operational checkpoint history |
+| `ARCHITECTURE.md` | GPU implementation notes | Historical architecture notes |
+
+No accidental remaining references in active source code, build scripts, or user-facing strings.
+
+---
+
+*End of REBRAND_PLAN.md — **Status: COMPLETED** — PulsePane v2.1.0*

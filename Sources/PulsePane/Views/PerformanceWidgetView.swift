@@ -3,7 +3,7 @@ import SwiftUI
 /// v2 main widget view: a dark, Apple-widget-style glass panel.
 ///
 /// Layout:
-///   header (MacPerformance + M4 badge)
+///   header (PulsePane + M4 badge)
 ///   ── CPU (histogram + %)
 ///   ── GPU (histogram + %)
 ///   ── Memory (progress bar + % / GB)
@@ -118,7 +118,7 @@ struct PerformanceWidgetView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("MacPerformance")
+                Text("PulsePane")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                 Text(headerSubtitle)

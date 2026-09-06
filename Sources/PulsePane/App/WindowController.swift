@@ -45,9 +45,12 @@ final class WindowController: NSObject, NSWindowDelegate {
         window.hasShadow = false
         window.isMovableByWindowBackground = true
         window.collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle]
-        window.title = "MacPerformance"
+        window.title = "PulsePane"
 
         super.init()
+
+        // Perform one-time legacy preference migration before restoring frame.
+        migrateLegacyPreferencesIfNeeded()
 
         log("level rawValue = \(rawLevel) (default: \(defaultLevel), desktopIcon: \(Int(CGWindowLevelForKey(.desktopIconWindow))))")
 
@@ -93,7 +96,45 @@ final class WindowController: NSObject, NSWindowDelegate {
     /// launch we always apply `defaultSize`; the saved origin is still used so
     /// the user's placement survives.
     private static let frameVersion = "v2"
-    private static let frameKey = "MacPerformance.windowFrame"
+    private static let frameKey = "PulsePane.windowFrame"
+    private static let legacyFrameKey = "MacPerformance.windowFrame"
+    private static let migrationVersionKey = "PulsePane.migrationVersion"
+
+    /// Performs one-time migration from legacy MacPerformance preferences.
+    /// Runs on first launch with new bundle identifier / app name.
+    private func migrateLegacyPreferencesIfNeeded() {
+        let defaults = UserDefaults.standard
+
+        // Check if migration already completed
+        let currentMigrationVersion = 1
+        let migratedVersion = defaults.integer(forKey: Self.migrationVersionKey)
+        if migratedVersion >= currentMigrationVersion {
+            return
+        }
+
+        // Read legacy frame if it exists
+        if let legacyFrameString = defaults.string(forKey: Self.legacyFrameKey) {
+            // Only migrate if no valid PulsePane frame exists yet
+            if defaults.string(forKey: Self.frameKey) == nil {
+                // Validate legacy frame format (should be "v2|{x, y, w, h}")
+                let parts = legacyFrameString.split(separator: "|", maxSplits: 1)
+                if parts.count == 2, parts[0] == Self.frameVersion {
+                    let rect = NSRectFromString(String(parts[1]))
+                    // Validate rect is reasonable (not empty, not absurdly large)
+                    if !rect.isNull, rect.width > 0, rect.height > 0,
+                       rect.width < 10000, rect.height < 10000 {
+                        // Write to new key with v2 version prefix
+                        let newFrameString = "\(Self.frameVersion)|\(NSStringFromRect(rect))"
+                        defaults.set(newFrameString, forKey: Self.frameKey)
+                        log("migrated legacy window frame: \(legacyFrameString) → \(newFrameString)")
+                    }
+                }
+            }
+        }
+
+        // Mark migration complete
+        defaults.set(currentMigrationVersion, forKey: Self.migrationVersionKey)
+    }
 
     /// Persists the current frame as an NSStringFromRect string.
     private func persistFrame() {
@@ -147,7 +188,7 @@ final class WindowController: NSObject, NSWindowDelegate {
     private var quitMenu: NSMenu {
         let menu = NSMenu()
         let quit = NSMenuItem(
-            title: "Quit MacPerformance",
+            title: "Quit PulsePane",
             action: #selector(quitApp),
             keyEquivalent: "q"
         )

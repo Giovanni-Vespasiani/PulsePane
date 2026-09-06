@@ -2,30 +2,30 @@ import Foundation
 
 /// Reads physical memory statistics via the Mach host_statistics64 API.
 ///
-/// # Definition of "used" memory (MacPerformance v0.1)
-///
+/// # Definition of "used" memory (PulsePane v2.0)
+/// 
 /// We define **used** as:
-///
+/// 
 ///     used = active + wired + compressed
-///
+/// 
 /// in page units (multiplied by the kernel page size).
-///
+/// 
 /// - **active**: pages recently referenced and currently mapped by processes
 ///   (kept warm in physical RAM).
 /// - **wired**: pages that cannot be paged out (kernel structures, I/O
 ///   buffers). These are permanently resident.
 /// - **compressed**: pages currently stored by the memory compressor
 ///   (`compressor_page_count`, i.e. pages *occupied by* the compressor).
-///
+/// 
 /// Intentionally **excluded**:
 /// - **inactive**: reclaimable cache pages that can be evicted; they are not
 ///   "in use" right now.
 /// - **speculative** and **free**: available for immediate reuse.
-///
+/// 
 /// This is *our* semantically-coherent approximation of physical memory
 /// currently in use. It is used as a sanity check against Activity Monitor,
 /// NOT a claim of byte-for-byte equivalence with any other tool.
-///
+/// 
 /// See DECISIONS.md D-003.
 final class MemoryReader: @unchecked Sendable {
     private let pageSize: UInt64

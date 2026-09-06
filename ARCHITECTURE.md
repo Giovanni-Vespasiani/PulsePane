@@ -1,8 +1,8 @@
-# ARCHITECTURE.md — MacPerformance v2.0
+# ARCHITECTURE.md — PulsePane v2.1
 
 ## Module structure
 ```
-App/MacPerformanceApp.swift      App entry point; drives WindowController.
+App/PulsePaneApp.swift           App entry point; drives WindowController.
 App/WindowController.swift       NSWindow setup: frameless, level, drag, persistence, size.
 Models/SystemStats.swift         Immutable Sendable snapshot: all v1+v2 metrics (Optional = unavailable).
 Models/ByteRate.swift            Rate/power/temperature formatters for the v2 UI.

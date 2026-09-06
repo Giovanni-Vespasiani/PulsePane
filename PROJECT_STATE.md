@@ -24,10 +24,10 @@
   MetricHistogramRow + MetricProgressRow + SecondaryMetricRow, full redesigned
   PerformanceWidgetView, versioned frame persistence (D-014), docs updated.
 - **GitHub:** Personal private remote configured ✓ — `origin` →
-  `git@github-personal:Giovanni-Vespasiani/MacPerformance.git` (private repo,
+  `git@github-personal:Giovanni-Vespasiani/PulsePane.git` (private repo,
   SSH authenticated as Giovanni-Vespasiani).
 - **v2.0 Tag:** `v2.0.0` created and pushed (commit 92f0834) — rollback point verified.
-- **v2.1-A Artifacts:** `docs/REBRAND_PLAN.md` created with full inventory, migration map, 22 candidates, top 5 shortlist, top 3 recommendations. DECISIONS.md updated with D-R001–D-R006.
+- **v2.1-A Artifacts:** `docs/REBRAND_PLAN.md` created with full inventory, migration map, 22 candidates, top 5 shortlist, top 3 recommendations. DECISIONS.md updated with D-R001–D-R007.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
