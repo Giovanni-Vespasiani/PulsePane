@@ -1,4 +1,5 @@
 import Darwin
+import os
 
 /// Computes a global CPU usage percentage using the Mach host processor
 /// info API (PROCESSOR_CPU_LOAD_INFO).
@@ -13,11 +14,19 @@ import Darwin
 /// *since the previous call* (not since boot). Call it at a fixed
 /// interval (the monitor calls it ~1/s).
 ///
+/// # Error Handling
+/// - First sample / counter reset → returns nil, establishes new baseline
+/// - Zero elapsed time / zero total delta → returns nil
+/// - Mach API failure → unavailable
+/// - Result clamped to [0, 100]
+///
 /// Reference: host_processor_info(3) mach man page. Public Mach API.
-final class CPUReader: @unchecked Sendable {
+final class CPUReader: @unchecked Sendable, WakeHandler.BaselineResettable {
     private var previousTotalTicks: UInt64 = 0
     private var previousIdleTicks: UInt64 = 0
     private var havePreviousSample = false
+
+    private let logger = Logger(subsystem: "com.github.Giovanni-Vespasiani.PulsePane", category: "cpu")
 
     func cpuUsage() -> Double? {
         var numCPUs: natural_t = 0
@@ -29,7 +38,10 @@ final class CPUReader: @unchecked Sendable {
             PROCESSOR_CPU_LOAD_INFO,
             &numCPUs, &cpuInfo, &numCpuInfo
         )
-        guard result == KERN_SUCCESS, let info = cpuInfo else { return nil }
+        guard result == KERN_SUCCESS, let info = cpuInfo else {
+            logger.debug("CPU: host_processor_info failed (result=\(result))")
+            return nil
+        }
         defer {
             // Release the kernel-allocated buffer.
             vm_deallocate(
@@ -54,11 +66,12 @@ final class CPUReader: @unchecked Sendable {
 
         let total = user + system + idle + nice
 
+        // Handle first sample or counter reset/wraparound
         guard havePreviousSample, total >= previousTotalTicks else {
-            // First sample or counter wraparound: record baseline only.
             previousTotalTicks = total
             previousIdleTicks = idle
             havePreviousSample = true
+            logger.debug("CPU: first sample or counter reset, baseline established")
             return nil
         }
 
@@ -67,15 +80,31 @@ final class CPUReader: @unchecked Sendable {
         previousTotalTicks = total
         previousIdleTicks = idle
 
-        guard totalDelta > 0 else { return 0 }
+        guard totalDelta > 0 else {
+            logger.debug("CPU: zero total delta")
+            return nil
+        }
 
         let percent = (Double(totalDelta - idleDelta) / Double(totalDelta)) * 100
-        return min(max(percent, 0), 100)
+        let clamped = min(max(percent, 0), 100)
+
+        if clamped != percent {
+            logger.debug("CPU: value \(percent)% clamped to \(clamped)%")
+        }
+
+        return clamped
     }
 
     /// Reads one state tick, treating the raw Int32 bucket as unsigned
     /// (kernel counters are cumulative counts, cannot be negative).
     private func counter(_ info: processor_info_array_t, base: Int, state: Int32) -> UInt64 {
         UInt64(info[base + Int(state)])
+    // MARK: - BaselineResettable
+
+    func resetBaselines() {
+        previousTotalTicks = 0
+        previousIdleTicks = 0
+        havePreviousSample = false
+        logger.debug("CPU: baselines reset (wake)")
     }
 }

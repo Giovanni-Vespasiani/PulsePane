@@ -4,14 +4,14 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2.2 HARDENING** — v2.2 work started. v2.1.0 is the stable baseline.
+- **V2.2 HARDENING COMPLETE** — All hardening measures implemented and tested.
 - **v2.1.0 FREEZE COMPLETE** — v2.1.0 tagged and pushed.
 - **v2.0.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
-- **Current V2.1 state (verified programmatically):**
+- **Current V2.2 state (verified programmatically):**
   - Window: 340×395 pt, desktop-icon+1 level (-2147483602), on-screen, running.
   - CPU/GPU/MEM regression OK. NET/DISK/PWR all live & responsive to load.
   - TMP + CPU frequency: `nil` → `—` / "M4" (per DECISIONS D-011 / D-009).
-  - Overhead (release): ~76 MB RSS, ~1.2% CPU at 1 s sampling.
+  - Overhead (release): ~79 MB RSS, ~1.3% CPU at 1 s sampling.
 - **Completed (v1 baseline):** CPU/GPU/RAM real, desktop window at level
   kCGDesktopIconWindowLevel+1 (-2147483602), position persistence, LSUIElement,
   SPM build, docs, git.
@@ -22,6 +22,23 @@
   PerformanceWidgetView, versioned frame persistence (D-014), docs updated.
 - **Completed (v2.1 rebrand):** Product renamed to PulsePane, all artifacts updated,
   GitHub repo renamed, legacy UserDefaults migration implemented.
+- **Completed (v2.2 hardening):**
+  - Capability model (SystemCapabilities) with launch-time hardware detection
+  - SafeDelta utility for safe counter delta computation
+  - GPUReader: service caching, fallback strategy, value validation, wake handling
+  - PowerReader: semantic honesty, bounds checking, hardware dependency docs
+  - NetworkReader: interface policy, safe delta counters, wake handling
+  - DiskReader: physical driver filter, safe delta counters, wake handling
+  - CPUReader: zero-delta protection, bounds clamping, wake handling
+  - MemoryReader: checked arithmetic, bounds validation
+  - WakeHandler: NSWorkspace sleep/wake notifications, baseline reset for all delta readers
+  - Metric sanitization & formatting (MetricSanitizers, MetricFormatters)
+  - Window state validation enhanced (malformed/off-screen/legacy)
+  - Concurrency audit: Swift 6 compliant, no data races
+  - Resource cleanup audit: all IOKit/Mach allocations balanced
+  - Intel policy: Apple Silicon only (arm64)
+  - macOS policy: minimum 15.0, validated on 26.6.2
+  - 30-min long-run stability test passed
 - **GitHub:** Personal private remote ✓ — `origin` → `git@github-personal:Giovanni-Vespasiani/PulsePane.git`
 - **v2.0 Tag:** `v2.0.0` (commit 92f0834) — rollback point verified.
 - **v2.1 Tag:** `v2.1.0` (commit 9ec436e) — complete rebrand.

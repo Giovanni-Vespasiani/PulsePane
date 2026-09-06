@@ -16,15 +16,17 @@ live metrics, refreshed ~every second:
 - Temperature (SoC) and CPU frequency — intentionally `—` where no clean
   non-privileged API exists (see Known limitations).
 
-## v2.0 / v2.1 goals
+## v2.0 / v2.1 / v2.2 goals
 - **v2.0:** a working, stable desktop widget showing real CPU/GPU/RAM data.
   No fake or simulated values. *(done)*
 - **v2.1:** complete rebrand to PulsePane with professional identity. *(done)*
+- **v2.2:** runtime hardening — defensive engineering, capability detection,
+  lifecycle correctness, safe counter handling, sleep/wake resilience. *(done)*
 
 ## Main requirements
 - Native Apple APIs only (Mach, IOKit, AppKit, SwiftUI). No Electron/webview,
   no external frameworks, no subprocess spawning per tick.
-- ~1s refresh, very low CPU overhead (measured ~0.6% CPU / ~78 MB RSS steady).
+- ~1s refresh, very low CPU overhead (measured ~1.3% CPU / ~79 MB RSS steady).
 - Dark, macOS-like widget UI; medium widget footprint (≈340×395 pt).
 - Frameless, draggable, hidden from Dock, persistent position, sits behind
   normal windows (not always-on-top).
@@ -58,8 +60,9 @@ PulsePane/
 ├── Package.swift
 ├── Sources/PulsePane/
 │   ├── App/          (app entry, WindowController)
-│   ├── Models/       (SystemStats, ByteRate)
-│   ├── Monitoring/   (SystemMonitor, MetricSampler, CPU/GPU/Memory/Network/Disk/Power/Temperature
+│   ├── Models/       (SystemStats, ByteRate, Sanitizers)
+│   ├── Monitoring/   (SystemMonitor, MetricSampler, WakeHandler, SystemCapabilities,
+│   │                  SafeDelta, CPU/GPU/Memory/Network/Disk/Power/Temperature
 │   │                  readers, PerformanceModel)
 │   └── Views/        (PerformanceWidgetView, MiniHistogram, MetricHistogramRow,
 │                      MetricProgressRow, SecondaryMetricRow)
@@ -70,7 +73,8 @@ PulsePane/
 ├── PROJECT_STATE.md
 ├── DECISIONS.md
 └── docs/
-    └── REBRAND_PLAN.md
+    ├── REBRAND_PLAN.md
+    └── HARDENING.md
 ```
 
 ## APIs used
@@ -84,7 +88,7 @@ PulsePane/
   loopback/virtual interfaces).
 - **Disk:** IOKit `IOBlockStorageDriver` `Statistics`, 1 s delta → R/W bytes/s.
 - **Power:** IOKit `AppleSmartBattery` → `PowerTelemetryData` `SystemLoad`
-  (deci-mW) → watts. See DECISIONS D-010.
+  (deci-mW) → watts. See DECISIONS D-010 / D-H003.
 
 ## Known limitations
 - GPU counters come from driver properties on `PerformanceStatistics`
@@ -98,9 +102,23 @@ PulsePane/
   CPU sub-label shows "M4", not a GHz figure. DECISIONS D-009.
 - Power is Apple telemetry (an estimate), cross-validated against the boot-time
   average; it is not a lab power meter. Idle ≈ 5.9–8.4 W depending on system
-  state.
+  state. Unavailable on desktop Macs (no battery).
 - Memory "used" is our semantically-coherent approximation, **not** a
   byte-for-byte replica of Activity Monitor.
 
+## v2.2 Hardening highlights
+- **Capability detection** at launch (SystemCapabilities)
+- **Safe delta counters** (SafeDelta/DeltaCounter) for CPU/Network/Disk
+- **GPUReader** service caching + wake invalidation
+- **PowerReader** semantic honesty + bounds (0–500 W)
+- **NetworkReader** virtual interface exclusion policy
+- **DiskReader** physical driver filter (marker key)
+- **WakeHandler** sleep/wake baseline reset for all delta readers
+- **Metric sanitization** (MetricSanitizers) + formatting (MetricFormatters)
+- **Sleep/wake** baseline reset via NSWorkspace notifications
+- **Concurrency audit** — Swift 6 compliant, no data races
+- **Resource cleanup audit** — all IOKit/Mach allocations balanced
+- **30-min stability test** passed (79 MB RSS, ~1.3% CPU)
+
 ## License / status
-Local development project. Not published; v2.1 in development.
+Local development project. Not published; v2.2 in development.

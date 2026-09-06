@@ -9,9 +9,21 @@ import Foundation
 /// never block SwiftUI.
 final class SystemMonitor: @unchecked Sendable {
     private let sampler = MetricSampler()
+    private let wakeHandler = WakeHandler()
 
     /// Runs until cancelled. Samples immediately, then every `interval`.
     func run(model: PerformanceModel, interval: Duration = .seconds(1)) async {
+        // Register readers with wake handler
+        await MainActor.run {
+            wakeHandler.register(sampler.cpuReader)
+            wakeHandler.register(sampler.networkReader)
+            wakeHandler.register(sampler.diskReader)
+            wakeHandler.register(sampler.gpuReader)
+        }
+        wakeHandler.start()
+
+        while !Task.isCancelled {
+
         while !Task.isCancelled {
             let snapshot = await Task.detached(priority: .utility) { [sampler] in
                 sampler.sample()

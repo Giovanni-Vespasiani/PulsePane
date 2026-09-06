@@ -78,7 +78,7 @@ struct PerformanceWidgetView: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                 Spacer()
-                Text(model.stats.powerWatts.map { ByteRate.watts($0) } ?? "—")
+                Text(MetricFormatters.power(model.stats.powerWatts))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
@@ -88,7 +88,7 @@ struct PerformanceWidgetView: View {
                 Text("Temp")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
-                Text(model.stats.socTemperatureCelsius.map { ByteRate.temperature($0) } ?? "—")
+                Text(MetricFormatters.temperature(model.stats.socTemperatureCelsius))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
@@ -146,17 +146,17 @@ struct PerformanceWidgetView: View {
     }
 
     private func percentText(_ value: Double) -> String {
-        String(format: "%.0f%%", value)
+        MetricFormatters.percent(MetricSanitizers.percent(value))
     }
 
     private var gpuValueText: String {
         guard let gpu = model.stats.gpuUsage else { return "—" }
-        return percentText(gpu)
+        return MetricFormatters.percent(MetricSanitizers.percent(gpu))
     }
 
     private var frequencyText: String {
         guard let ghz = model.stats.cpuFrequencyGHz else { return "M4" }
-        return String(format: "%.2f GHz", ghz)
+        return MetricFormatters.frequency(MetricSanitizers.frequencyGHz(ghz))
     }
 
     private var gpuHistoryNumbers: [Double] {

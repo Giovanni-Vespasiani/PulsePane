@@ -9,22 +9,22 @@ import Foundation
 ///
 /// Availability rule: an unreadable metric is `nil` in `SystemStats`, never 0.
 final class MetricSampler: @unchecked Sendable {
-    private let cpu = CPUReader()
-    private let memory = MemoryReader()
-    private let gpu = GPUReader()
-    private let network = NetworkReader()
-    private let disk = DiskReader()
-    private let power = PowerReader()
-    private let temperature = TemperatureReader()
+    let cpuReader = CPUReader()
+    let memoryReader = MemoryReader()
+    let gpuReader = GPUReader()
+    let networkReader = NetworkReader()
+    let diskReader = DiskReader()
+    let powerReader = PowerReader()
+    let temperatureReader = TemperatureReader()
 
     func sample() -> SystemStats {
-        let cpuUsage = cpu.cpuUsage() ?? 0
-        let gpuUsage = gpu.gpuUsage()
-        let memorySnapshot = memory.read()
-        let networkSnapshot = network.read()
-        let diskSnapshot = disk.read()
-        let powerWatts = power.powerWatts()
-        let temperatureCelsius = temperature.celsius()
+        let cpuUsage = cpuReader.cpuUsage() ?? 0
+        let gpuUsage = gpuReader.gpuUsage()
+        let memorySnapshot = memoryReader.read()
+        let networkSnapshot = networkReader.read()
+        let diskSnapshot = diskReader.read()
+        let powerWatts = powerReader.powerWatts()
+        let temperatureCelsius = temperatureReader.celsius()
 
         return SystemStats(
             cpuUsage: cpuUsage,

@@ -328,3 +328,63 @@ Decision, Motivation, Alternatives considered, Why rejected, Consequences / trad
 - **Why chosen:** Strongest overall brandability (combines live monitoring metaphor with desktop pane concept); clean bundle ID (`io.github.Giovanni-Vespasiani.pulsepane`); available GitHub repo name with minor qualifier; extensible for future Apple Silicon/AI metrics.
 - **Consequences / trade-offs:** "Pulse" alone has heavy collisions; "Pane" suffix differentiates and reinforces desktop widget positioning.
 
+---
+
+## D-H001: SafeDelta utility centralizes counter delta logic
+
+- **Decision:** Introduce `SafeDelta` enum and `DeltaCounter` class in `Sources/PulsePane/Monitoring/SafeDelta.swift`. All delta-based readers (CPU, Network, Disk) use this shared utility.
+- **Motivation:** Eliminate duplicated reset/wraparound logic across CPU, Network, and Disk readers. Centralize behavior for: first sample (nil), counter reset/wraparound (nil), zero elapsed (nil), valid delta (rate).
+- **Alternatives considered:** Keep duplicated logic in each reader; create a protocol with default implementation.
+- **Why rejected:** Duplication increases bug surface; protocol adds complexity without benefit.
+- **Consequences / trade-offs:** Single source of truth for delta logic; easier to audit and test.
+
+---
+
+## D-H002: GPUReader service caching with wake invalidation
+
+- **Decision:** GPUReader caches the discovered `IOAccelerator` service on first valid read. `invalidate()` clears cache, forcing rediscovery on next sample. WakeHandler calls `resetBaselines()` which calls `invalidate()` on wake.
+- **Motivation:** Avoid repeated `IOServiceGetMatchingServices` calls every second. Handle service disappearance after sleep/wake gracefully.
+- **Alternatives considered:** Discover every sample; cache forever.
+- **Why rejected:** Discovery every sample wastes CPU; forever caching breaks after sleep/wake or driver reload.
+- **Consequences / trade-offs:** Slightly more complex state machine; much better performance and resilience.
+
+---
+
+## D-H003: PowerReader semantic honesty and bounds
+
+- **Decision:** Document `PowerTelemetryData.SystemLoad` as "reported system load power" (Apple telemetry estimate), not "total system power". Enforce plausible bounds [0, 500] W. Return `nil` on missing service/key, malformed value, or out-of-bounds.
+- **Motivation:** The exact meaning of `SystemLoad` is not officially documented by Apple. Empirical validation suggests milliwatts, but we must not claim certainty.
+- **Alternatives considered:** Label as "total system power"; omit bounds checking.
+- **Why rejected:** Misrepresents Apple telemetry; missing bounds allows absurd values to reach UI.
+- **Consequences / trade-offs:** UI shows `—` on desktop Macs (no battery) — honest but less useful.
+
+---
+
+## D-H004: NetworkReader interface exclusion policy
+
+- **Decision:** Exclude virtual/tunnel interfaces by prefix: `lo`, `awdl`, `llw`, `utun`, `ipsec`, `gif`, `stf`. Only include IFF_UP, AF_LINK interfaces.
+- **Motivation:** Virtual interfaces (VPN, AWDL, tunnels) produce high-variance counters that distort "real" network traffic picture.
+- **Alternatives considered:** Include all UP interfaces; include only primary interface.
+- **Why rejected:** All UP includes VPN/tunnel noise; primary-only misses multi-homed traffic.
+- **Consequences / trade-offs:** May miss some legitimate traffic on unusual interfaces; cleaner signal.
+
+---
+
+## D-H005: DiskReader physical driver filter
+
+- **Decision:** Only accept `IOBlockStorageDriver` Statistics dictionaries containing the `Total Time (Write)` marker key (physical driver level). Skip APFS/volume overlays.
+- **Motivation:** APFS volumes expose byte counters that double-count the same physical I/O.
+- **Alternatives considered:** Sum all Statistics; use `IOMedia` instead.
+- **Why rejected:** Summing all double-counts; `IOMedia` doesn't expose byte counters reliably.
+- **Consequences / trade-offs:** Only reports physical drive I/O; misses per-volume breakdown.
+
+---
+
+## D-H006: WakeHandler baseline reset for all delta readers
+
+- **Decision:** WakeHandler listens for `NSWorkspace.willSleepNotification`/`didWakeNotification`. On wake, calls `resetBaselines()` on CPU, Network, Disk, and GPU readers.
+- **Motivation:** Delta-based counters would compute massive false deltas across the sleep interval (hours of "zero" time).
+- **Alternatives considered:** Ignore sleep/wake; timestamp-based compensation.
+- **Why rejected:** Ignoring causes massive false spikes; timestamp compensation is complex and error-prone.
+- **Consequences / trade-offs:** First sample after wake returns nil (baseline reset); one second of missing data is acceptable.
+

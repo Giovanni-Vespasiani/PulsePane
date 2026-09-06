@@ -104,6 +104,18 @@ Verified approach used in Milestone C (recorded for future re-runs):
 - Update PROJECT_STATE.md after every milestone before any possible context
   compaction.
 
+## v2.2 Hardening Notes
+- **SafeDelta/DeltaCounter:** All delta-based readers (CPU, Network, Disk) use `DeltaCounter` for safe delta computation. Handles first sample, counter reset, zero elapsed time.
+- **WakeHandler:** Listens for `NSWorkspace.willSleepNotification`/`didWakeNotification`. Calls `resetBaselines()` on CPU, Network, Disk, GPU readers. GPUReader also invalidates service cache.
+- **GPUReader:** Caches `IOAccelerator` service on first valid read. `invalidate()` forces rediscovery. Called on wake.
+- **PowerReader:** Documents telemetry semantics honestly ("reported system load power"). Bounds: 0–500 W. Returns nil on desktop Macs (no battery).
+- **NetworkReader:** Excludes virtual interfaces (lo, awdl, llw, utun, ipsec, gif, stf). Uses `DeltaCounter` for safe deltas.
+- **DiskReader:** Only accepts physical driver Statistics (marker key `Total Time (Write)`). Uses `DeltaCounter`.
+- **Sanitizers/Formatters:** `MetricSanitizers` + `MetricFormatters` in `Models/Sanitizers.swift`. All UI values pass through sanitizers before formatting.
+- **WakeHandler:** Listens for `NSWorkspace.willSleepNotification`/`didWakeNotification`. Calls `resetBaselines()` on CPU, Network, Disk, GPU readers.
+- **Sanitizers:** `MetricSanitizers` clamps/validates all metrics. `MetricFormatters` formats for display.
+- **WindowController:** Enhanced frame validation (malformed/off-screen/legacy).
+
 ## GitHub Remote
 - **Remote name:** `origin`
 - **URL:** `git@github-personal:Giovanni-Vespasiani/PulsePane.git`

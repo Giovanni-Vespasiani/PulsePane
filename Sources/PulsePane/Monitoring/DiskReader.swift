@@ -1,16 +1,39 @@
 import Foundation
 import IOKit
+import os
 
 /// Reads cumulative disk byte counters from the kernel's block-storage driver
 /// layer via IOKit (`IOBlockStorageDriver` → `Statistics`), native and
 /// subprocess-free, and computes read/write rate from the delta between two
 /// samples (≈1 s apart).
 ///
-/// The `Statistics` dictionary that we accept is the *physical* driver-level
-/// one (identified by the presence of the aggregate `Total Time (Write)` key);
-/// higher, overlay layers (APFS, volumes) also expose byte stats and would
-/// double-count the same physical drive, so we ignore them.
-final class DiskReader: @unchecked Sendable {
+/// # Disk Selection Policy
+/// We only accept the **physical driver-level** `Statistics` dictionary,
+/// identified by the presence of the aggregate `Total Time (Write)` key.
+/// This avoids double-counting from APFS/volume overlay layers that also
+/// expose byte stats for the same physical drive.
+///
+/// # Counter Handling
+/// - Uses `DeltaCounter` for safe delta computation
+/// - Counter reset/rollover → returns nil, baseline reset
+/// - First sample → returns nil, establishes baseline
+/// - Negative delta (counter regression) → treated as reset
+///
+/// # Service Handling
+/// - Iterates all `IOBlockStorageDriver` services
+/// - Sums bytes from all physical drives (internal + external)
+/// - Service disappearance handled gracefully (nil returned, baseline reset)
+///
+/// # Error Handling
+/// - No matching service → unavailable
+/// - Statistics dict missing → service skipped
+/// - Marker key missing (APFS overlay) → service skipped
+/// - Missing read/write keys → service skipped
+/// - Malformed CFNumber → service skipped
+/// - Counter reset → returns nil, baseline cleared
+final class DiskReader: @unchecked Sendable, WakeHandler.BaselineResettable {
+
+    // MARK: - Configuration
 
     private struct Sample {
         let bytesRead: UInt64
@@ -18,24 +41,35 @@ final class DiskReader: @unchecked Sendable {
         let date: Date
     }
 
-    private var previous: Sample?
-
-    /// Keys that identify the physical IOBlockStorageDriver-level Statistics
-    /// (as opposed to APFS/volume overlay counters).
+    // Keys that identify the physical IOBlockStorageDriver-level Statistics
+    // (as opposed to APFS/volume overlay counters).
     private static let markerKey = "Total Time (Write)"
     private static let readKey = "Bytes (Read)"
     private static let writeKey = "Bytes (Write)"
+
+    // MARK: - State
+
+    private let logger = Logger(subsystem: "com.github.Giovanni-Vespasiani.PulsePane", category: "disk")
+    private var previous: Sample?
+    private let readCounter = DeltaCounter()
+    private let writeCounter = DeltaCounter()
+
+    // MARK: - Public API
 
     func read() -> (readPerSec: Double?, writePerSec: Double?) {
         let match = IOServiceMatching("IOBlockStorageDriver")
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &iterator) == KERN_SUCCESS else {
+            logger.debug("Disk: IOServiceGetMatchingServices failed")
+            readCounter.reset()
+            writeCounter.reset()
             return (nil, nil)
         }
         defer { IOObjectRelease(iterator) }
 
         var bytesRead: UInt64 = 0
         var bytesWritten: UInt64 = 0
+        var serviceCount = 0
 
         var service: io_object_t = IOIteratorNext(iterator)
         while service != 0 {
@@ -43,21 +77,34 @@ final class DiskReader: @unchecked Sendable {
             if let stats = statistics(of: service) {
                 bytesRead += stats.0
                 bytesWritten += stats.1
+                serviceCount += 1
             }
             service = IOIteratorNext(iterator)
         }
 
+        logger.debug("Disk: sampled \(serviceCount) physical drives, read=\(bytesRead) written=\(bytesWritten)")
+
         let now = Date()
-        defer { previous = Sample(bytesRead: bytesRead, bytesWritten: bytesWritten, date: now) }
+        let interval = previous.map { now.timeIntervalSince($0.date) } ?? 0
 
-        guard let previous, now > previous.date else { return (nil, nil) }
-        let elapsed = now.timeIntervalSince(previous.date)
-        guard elapsed > 0 else { return (nil, nil) }
+        // Use safe delta counters
+        let read = readCounter.sample(newValue: bytesRead, interval: interval)
+        let write = writeCounter.sample(newValue: bytesWritten, interval: interval)
 
-        let read = Self.rate(new: bytesRead, old: previous.bytesRead, elapsed: elapsed)
-        let write = Self.rate(new: bytesWritten, old: previous.bytesWritten, elapsed: elapsed)
+        // Check for counter resets
+        let readReset = bytesRead < (previous?.bytesRead ?? 0)
+        let writeReset = bytesWritten < (previous?.bytesWritten ?? 0)
+        if readReset || writeReset {
+            logger.debug("Disk: counter reset detected, resetting baselines")
+            readCounter.reset()
+            writeCounter.reset()
+        }
+
+        previous = Sample(bytesRead: bytesRead, bytesWritten: bytesWritten, date: now)
         return (read, write)
     }
+
+    // MARK: - Private
 
     private func statistics(of service: io_registry_entry_t) -> (UInt64, UInt64)? {
         guard let cf = IORegistryEntryCreateCFProperty(
@@ -68,6 +115,7 @@ final class DiskReader: @unchecked Sendable {
         )?.takeRetainedValue() as? [String: Any] else {
             return nil
         }
+        // Only accept physical driver-level Statistics (has aggregate timing keys)
         guard cf[Self.markerKey] != nil,
               let read = uint64(from: cf[Self.readKey]),
               let written = uint64(from: cf[Self.writeKey]) else {
@@ -87,10 +135,12 @@ final class DiskReader: @unchecked Sendable {
         default:
             return nil
         }
-    }
+    // MARK: - WakeHandler.BaselineResettable
 
-    private static func rate(new: UInt64, old: UInt64, elapsed: TimeInterval) -> Double? {
-        guard new >= old else { return nil } // counter reset / wrap
-        return Double(new - old) / elapsed
+    func resetBaselines() {
+        previous = nil
+        readCounter.reset()
+        writeCounter.reset()
+        logger.debug("Disk: baselines reset (wake)")
     }
 }
