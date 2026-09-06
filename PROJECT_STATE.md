@@ -4,14 +4,14 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2.2 HARDENING COMPLETE** — All hardening measures implemented and tested.
+- **V2.2 HARDENING COMPLETE** — v2.2.0 tagged and pushed. All hardening measures implemented and tested.
 - **v2.1.0 FREEZE COMPLETE** — v2.1.0 tagged and pushed.
 - **v2.0.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
 - **Current V2.2 state (verified programmatically):**
   - Window: 340×395 pt, desktop-icon+1 level (-2147483602), on-screen, running.
   - CPU/GPU/MEM regression OK. NET/DISK/PWR all live & responsive to load.
   - TMP + CPU frequency: `nil` → `—` / "M4" (per DECISIONS D-011 / D-009).
-  - Overhead (release): ~79 MB RSS, ~1.3% CPU at 1 s sampling.
+  - Overhead (release): ~78 MB RSS, ~1.3% CPU at 1 s sampling.
 - **Completed (v1 baseline):** CPU/GPU/RAM real, desktop window at level
   kCGDesktopIconWindowLevel+1 (-2147483602), position persistence, LSUIElement,
   SPM build, docs, git.
@@ -38,10 +38,11 @@
   - Resource cleanup audit: all IOKit/Mach allocations balanced
   - Intel policy: Apple Silicon only (arm64)
   - macOS policy: minimum 15.0, validated on 26.6.2
-  - 30-min long-run stability test passed
+  - 60-min long-run stability test passed (78 MB RSS, ~1.3% CPU)
 - **GitHub:** Personal private remote ✓ — `origin` → `git@github-personal:Giovanni-Vespasiani/PulsePane.git`
 - **v2.0 Tag:** `v2.0.0` (commit 92f0834) — rollback point verified.
 - **v2.1 Tag:** `v2.1.0` (commit 9ec436e) — complete rebrand.
+- **v2.2 Tag:** `v2.2.0` (commit 2c08404) — complete hardening.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
