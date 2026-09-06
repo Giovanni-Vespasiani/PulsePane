@@ -1,20 +1,17 @@
-# PROJECT_STATE.md — MacPerformance v2.0 (operational checkpoint)
+# PROJECT_STATE.md — PulsePane v2.2 (operational checkpoint)
 
 > This file is the primary operational checkpoint. Read it first after any
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2.1-B REBRAND IMPLEMENTATION** — Approved brand name: **PulsePane**. Complete migration in progress.
-- **v2.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
-- Visual reference (recorded so it is not lost):
-  `~/Documents/screenshot/Screenshot 2026-09-05 alle 21.00.47.png`
-  (NOTE: this model cannot view images; v2 is driven by spec + pixel-probe data.
-  Final visual judgement = user's eye at the VISUAL CHECKPOINT.)
-- **Current V2 state (all verified programmatically):**
+- **V2.2 HARDENING** — v2.2 work started. v2.1.0 is the stable baseline.
+- **v2.1.0 FREEZE COMPLETE** — v2.1.0 tagged and pushed.
+- **v2.0.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
+- **Current V2.1 state (verified programmatically):**
   - Window: 340×395 pt, desktop-icon+1 level (-2147483602), on-screen, running.
   - CPU/GPU/MEM regression OK. NET/DISK/PWR all live & responsive to load.
   - TMP + CPU frequency: `nil` → `—` / "M4" (per DECISIONS D-011 / D-009).
-  - Overhead (release): ~78 MB RSS, ~0.6% CPU at 1 s sampling.
+  - Overhead (release): ~76 MB RSS, ~1.2% CPU at 1 s sampling.
 - **Completed (v1 baseline):** CPU/GPU/RAM real, desktop window at level
   kCGDesktopIconWindowLevel+1 (-2147483602), position persistence, LSUIElement,
   SPM build, docs, git.
@@ -23,11 +20,11 @@
   TemperatureReader (documented nil), GPU-name label, MiniHistogram +
   MetricHistogramRow + MetricProgressRow + SecondaryMetricRow, full redesigned
   PerformanceWidgetView, versioned frame persistence (D-014), docs updated.
-- **GitHub:** Personal private remote configured ✓ — `origin` →
-  `git@github-personal:Giovanni-Vespasiani/PulsePane.git` (private repo,
-  SSH authenticated as Giovanni-Vespasiani).
-- **v2.0 Tag:** `v2.0.0` created and pushed (commit 92f0834) — rollback point verified.
-- **v2.1-A Artifacts:** `docs/REBRAND_PLAN.md` created with full inventory, migration map, 22 candidates, top 5 shortlist, top 3 recommendations. DECISIONS.md updated with D-R001–D-R007.
+- **Completed (v2.1 rebrand):** Product renamed to PulsePane, all artifacts updated,
+  GitHub repo renamed, legacy UserDefaults migration implemented.
+- **GitHub:** Personal private remote ✓ — `origin` → `git@github-personal:Giovanni-Vespasiani/PulsePane.git`
+- **v2.0 Tag:** `v2.0.0` (commit 92f0834) — rollback point verified.
+- **v2.1 Tag:** `v2.1.0` (commit 9ec436e) — complete rebrand.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
