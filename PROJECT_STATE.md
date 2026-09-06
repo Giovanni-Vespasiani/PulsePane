@@ -4,7 +4,7 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2.1-A REBRAND PREPARATION** — Identity audit complete, REBRAND_PLAN.md created, naming candidates shortlisted. **Awaiting final name approval.**
+- **V2.1-B REBRAND IMPLEMENTATION** — Approved brand name: **PulsePane**. Complete migration in progress.
 - **v2.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
 - Visual reference (recorded so it is not lost):
   `~/Documents/screenshot/Screenshot 2026-09-05 alle 21.00.47.png`
