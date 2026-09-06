@@ -4,8 +4,8 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2 CHECKPOINT** — v2 implementation COMPLETE and running. Waiting at
-  **VISUAL CHECKPOINT** for the user's eye (terminal has no screen access).
+- **V2.1-A REBRAND PREPARATION** — v2.0 frozen, rebrand preparation started.
+- **v2.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
 - Visual reference (recorded so it is not lost):
   `~/Documents/screenshot/Screenshot 2026-09-05 alle 21.00.47.png`
   (NOTE: this model cannot view images; v2 is driven by spec + pixel-probe data.
@@ -15,7 +15,6 @@
   - CPU/GPU/MEM regression OK. NET/DISK/PWR all live & responsive to load.
   - TMP + CPU frequency: `nil` → `—` / "M4" (per DECISIONS D-011 / D-009).
   - Overhead (release): ~78 MB RSS, ~0.6% CPU at 1 s sampling.
-  - Next: user visual review → spacing/color/layout refinements → commit v2.0.
 - **Completed (v1 baseline):** CPU/GPU/RAM real, desktop window at level
   kCGDesktopIconWindowLevel+1 (-2147483602), position persistence, LSUIElement,
   SPM build, docs, git.
@@ -27,6 +26,7 @@
 - **GitHub:** Personal private remote configured ✓ — `origin` →
   `git@github-personal:Giovanni-Vespasiani/MacPerformance.git` (private repo,
   SSH authenticated as Giovanni-Vespasiani).
+- **v2.0 Tag:** `v2.0.0` created and pushed (commit 92f0834) — rollback point verified.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
