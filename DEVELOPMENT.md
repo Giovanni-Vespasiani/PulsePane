@@ -112,6 +112,17 @@ Verified approach used in Milestone C (recorded for future re-runs):
 - **Account:** Giovanni-Vespasiani (personal)
 - **Local Git config:** `user.name=Gvespa`, `user.email=giovivespa06@gmail.com` (repository-local only)
 
+## Versioning Policy (from v2.0 freeze)
+| Version | Meaning |
+|---------|---------|
+| v2.0.0 | Stable pre-rebrand release (TAGGED) — rollback point |
+| v2.1.0 | Completed rebrand / public identity |
+| v2.2.0 | Hardening (error handling, edge cases) |
+| v2.3.0 | Tests + CI |
+| v2.4.0 | Public-readiness release (license, docs, signing) |
+
+Current HEAD: v2.1 development (commit 502b036)
+
 ## Tests: v2 metrics (2026-09-05)
 
 The widget now also reads Network, Disk, Power, and Temperature. The `MP_DEBUG=1`

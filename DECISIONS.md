@@ -247,3 +247,74 @@ Decision, Motivation, Alternatives considered, Why rejected, Consequences / trad
 - **Consequences / trade-offs:** first v2 launch is centered; from then on the
   drag position is preserved. Future layout changes only bump the version tag.
 
+---
+
+## D-R001: Retain legacy bundle identifier for v2.1 to preserve UserDefaults
+
+- **Decision:** Keep `CFBundleIdentifier = local.MacPerformance` in v2.1
+  (rebrand prep) so existing users' window position persists automatically.
+- **Motivation:** Changing the bundle identifier would move preferences to a new
+  domain, resetting window position and any future persisted state.
+- **Alternatives considered:** Change bundle ID immediately with migration code
+  in v2.1.
+- **Why rejected:** Adds complexity to v2.1; migration can be done cleanly in
+  v2.2+ when professional bundle ID is adopted. Zero user disruption now.
+- **Consequences / trade-offs:** Temporary "local." prefix remains; professional
+  identifier deferred to v2.2.
+
+---
+
+## D-R002: UserDefaults migration strategy — legacy domain import on first launch
+
+- **Decision:** When bundle identifier eventually changes (v2.2+), migrate
+  `MacPerformance.windowFrame` → `<NewName>.windowFrame` on first launch if
+  new key absent.
+- **Motivation:** Seamless continuity — users never lose window position.
+- **Implementation:** One-time check in `WindowController.init` or App delegate.
+- **Consequences / trade-offs:** Simple, robust, no orphaned preferences.
+
+---
+
+## D-R003: Future bundle identifier pattern
+
+- **Decision:** `io.github.Giovanni-Vespasiani.<kebab-case-new-name>`
+- **Motivation:** Reverse-DNS with owned GitHub namespace — stable, unique,
+  compatible with Apple signing/notarization and Homebrew.
+- **Examples:** `io.github.Giovanni-Vespasiani.silhouette`,
+  `io.github.Giovanni-Vespasiani.vitals`, etc.
+- **Consequences / trade-offs:** Professional, standard, future-proof.
+
+---
+
+## D-R004: Source rename scope — only public-facing identifiers
+
+- **Decision:** Rename only: SPM package/product/target, executable, app bundle,
+  CFBundleDisplayName/Name/Identifier, App struct, window title, quit menu,
+  frame key, UI header text, GitHub repo. Keep all generic internal types
+  (`PerformanceWidgetView`, `SystemMonitor`, `MetricSampler`, `*Reader`, etc.).
+- **Motivation:** Avoid massive noisy diffs for zero user value.
+- **Consequences / trade-offs:** Internal code still references "MacPerformance"
+  in type names; acceptable for implementation details.
+
+---
+
+## D-R005: GitHub repository rename procedure
+
+- **Decision:** Rename via GitHub web UI → update local `origin` remote URL →
+  verify fetch. Preserves history, tags, issues.
+- **Commands:** `git remote set-url origin git@github-personal:Giovanni-Vespasiani/<new-name>.git`
+- **Consequences / trade-offs:** Zero history loss; existing clones need one
+  `git remote set-url`.
+
+---
+
+## D-R006: Versioning policy from v2.0 freeze onward
+
+- **Decision:**
+  - v2.0.0 — stable pre-rebrand (TAGGED)
+  - v2.1.0 — completed rebrand / public identity
+  - v2.2.0 — hardening
+  - v2.3.0 — tests + CI
+  - v2.4.0 — public-readiness (license, docs, signing)
+- **Consequences / trade-offs:** Clear milestones; rebrand isolated in v2.1.
+

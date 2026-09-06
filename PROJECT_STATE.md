@@ -4,7 +4,7 @@
 > context compaction or before resuming work. Update after every milestone.
 
 ## Current Status
-- **V2.1-A REBRAND PREPARATION** — v2.0 frozen, rebrand preparation started.
+- **V2.1-A REBRAND PREPARATION** — Identity audit complete, REBRAND_PLAN.md created, naming candidates shortlisted. **Awaiting final name approval.**
 - **v2.0 FREEZE COMPLETE** — v2.0.0 tagged and pushed as permanent rollback point.
 - Visual reference (recorded so it is not lost):
   `~/Documents/screenshot/Screenshot 2026-09-05 alle 21.00.47.png`
@@ -27,6 +27,7 @@
   `git@github-personal:Giovanni-Vespasiani/MacPerformance.git` (private repo,
   SSH authenticated as Giovanni-Vespasiani).
 - **v2.0 Tag:** `v2.0.0` created and pushed (commit 92f0834) — rollback point verified.
+- **v2.1-A Artifacts:** `docs/REBRAND_PLAN.md` created with full inventory, migration map, 22 candidates, top 5 shortlist, top 3 recommendations. DECISIONS.md updated with D-R001–D-R006.
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
