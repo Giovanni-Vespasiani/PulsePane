@@ -104,6 +104,14 @@ Verified approach used in Milestone C (recorded for future re-runs):
 - Update PROJECT_STATE.md after every milestone before any possible context
   compaction.
 
+## GitHub Remote
+- **Remote name:** `origin`
+- **URL:** `git@github-personal:Giovanni-Vespasiani/MacPerformance.git`
+- **Visibility:** Private
+- **Auth:** SSH via `github-personal` host (ed25519 key `~/.ssh/id_ed25519_github_personal`)
+- **Account:** Giovanni-Vespasiani (personal)
+- **Local Git config:** `user.name=Gvespa`, `user.email=giovivespa06@gmail.com` (repository-local only)
+
 ## Tests: v2 metrics (2026-09-05)
 
 The widget now also reads Network, Disk, Power, and Temperature. The `MP_DEBUG=1`

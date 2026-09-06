@@ -24,6 +24,9 @@
   TemperatureReader (documented nil), GPU-name label, MiniHistogram +
   MetricHistogramRow + MetricProgressRow + SecondaryMetricRow, full redesigned
   PerformanceWidgetView, versioned frame persistence (D-014), docs updated.
+- **GitHub:** Personal private remote configured ✓ — `origin` →
+  `git@github-personal:Giovanni-Vespasiani/MacPerformance.git` (private repo,
+  SSH authenticated as Giovanni-Vespasiani).
 
 ## Environment
 - Xcode: 26.6 (Build 17F113) at `/Applications/Xcode.app` (full install, ACTIVE)
