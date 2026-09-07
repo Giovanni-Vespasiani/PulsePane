@@ -6,35 +6,34 @@ final class CapabilityTests: XCTestCase {
     func testDetectAllCapabilities() {
         let snapshot = SystemCapabilities.detect()
         
-        // Basic hardware info
-        XCTAssertEqual(snapshot.machineModel, "Mac16,13")
-        XCTAssertEqual(snapshot.architecture, "arm64")
-        XCTAssertTrue(snapshot.isAppleSilicon)
-        XCTAssertEqual(snapshot.cpuLogicalCount, 10)
-        XCTAssertEqual(snapshot.physicalMemoryBytes, 17_179_869_184)
+        // Basic hardware info - portable assertions
+        XCTAssertFalse(snapshot.machineModel.isEmpty, "Machine model should not be empty")
+        XCTAssertEqual(snapshot.architecture, "arm64", "Should be arm64 on Apple Silicon")
+        XCTAssertTrue(snapshot.isAppleSilicon, "Should detect Apple Silicon")
+        XCTAssertGreaterThan(snapshot.cpuLogicalCount, 0, "CPU count should be positive")
+        XCTAssertGreaterThan(snapshot.physicalMemoryBytes, 0, "Memory should be positive")
         
-        // Capability availability - on CI GPU may not be available
-        // We just verify the detection logic runs without crashing
-        XCTAssertNotNil(snapshot.gpuAvailable)
-        XCTAssertNotNil(snapshot.powerAvailable)
-        XCTAssertNotNil(snapshot.temperatureAvailable)
-        XCTAssertNotNil(snapshot.networkAvailable)
-        XCTAssertNotNil(snapshot.diskAvailable)
+        // Capability availability - verify detection logic runs without crashing
+        XCTAssertNotNil(snapshot.gpuAvailable, "GPU availability should be determined")
+        XCTAssertNotNil(snapshot.powerAvailable, "Power availability should be determined")
+        XCTAssertNotNil(snapshot.temperatureAvailable, "Temperature availability should be determined")
+        XCTAssertNotNil(snapshot.networkAvailable, "Network availability should be determined")
+        XCTAssertNotNil(snapshot.diskAvailable, "Disk availability should be determined")
         
-        // Temperature should be unavailable (no clean API)
-        XCTAssertFalse(snapshot.temperatureAvailable)
+        // Temperature should be unavailable (no clean non-privileged API)
+        XCTAssertFalse(snapshot.temperatureAvailable, "SoC temperature should be unavailable")
         
-        // GPU details - may be nil on some systems
-        // If GPU is available, verify details are populated
+        // GPU details - if available, details should be populated
         if snapshot.gpuAvailable {
-            XCTAssertNotNil(snapshot.gpuServiceClass)
-            XCTAssertNotNil(snapshot.gpuBundleID)
-            XCTAssertNotNil(snapshot.gpuPreferredKey)
+            XCTAssertNotNil(snapshot.gpuServiceClass, "GPU service class should be set when available")
+            XCTAssertNotNil(snapshot.gpuBundleID, "GPU bundle ID should be set when available")
+            XCTAssertNotNil(snapshot.gpuPreferredKey, "GPU preferred key should be set when available")
         }
         
-        // Power details
-        XCTAssertNotNil(snapshot.powerSource)
-        XCTAssertEqual(snapshot.powerSource, "AppleSmartBattery.PowerTelemetryData.SystemLoad")
+        // Power details - power source should be set when available
+        if snapshot.powerAvailable {
+            XCTAssertNotNil(snapshot.powerSource, "Power source should be set when power is available")
+        }
     }
 
     func testCapabilityUnavailableStates() {

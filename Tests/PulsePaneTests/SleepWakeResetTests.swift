@@ -63,10 +63,10 @@ final class SleepWakeResetTests: XCTestCase {
         
         gpuReader.resetBaselines()
         
-        // Should not crash
+        // Should not crash - result may be nil (no GPU) or a value
         let result = gpuReader.gpuUsage()
-        // Result may be nil or a value, but should not crash
-        XCTAssertNotNil(result) // Actually it can be nil if no GPU, but shouldn't crash
+        // Result may be nil (no GPU) or a value - just verify no crash
+        _ = result
     }
 
     func testWakeHandlerStartsAndStops() {
@@ -104,7 +104,6 @@ final class SleepWakeResetTests: XCTestCase {
 
     func testWakeHandlerDoesNotAlterMigrationState() {
         let defaults = UserDefaults.standard
-        let migrationKey = "PulsePane.migrationVersion"
         
         // Set migration as complete
         defaults.set(1, forKey: "PulsePane.migrationVersion")
