@@ -18,6 +18,15 @@ let package = Package(
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("IOKit"),
             ]
-        )
+        ),
+        .testTarget(
+            name: "PulsePaneTests",
+            dependencies: ["PulsePane"],
+            path: "Tests/PulsePaneTests",
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("IOKit"),
+            ]
+        ),
     ]
 )

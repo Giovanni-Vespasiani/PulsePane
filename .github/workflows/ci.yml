@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Show macOS version
+        run: sw_vers
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build Debug
+        run: swift build
+
+      - name: Run tests
+        run: swift test
+
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Build Release
+        run: swift build -c release
+
+      - name: Verify app bundle
+        run: |
+          ./scripts/build.sh release
+          if [ ! -f ".build/arm64-apple-macosx/release/PulsePane.app/Contents/MacOS/PulsePane" ]; then
+            echo "App bundle not found or incomplete"
+            exit 1
+          fi
+          echo "App bundle verified"
+
+      - name: Check for warnings
+        run: |
+          swift build 2>&1 | grep -E "(warning|error)" || true
+          # This step will show warnings but not fail the build
+          # In future we can make warnings fail the build
+
+  warning-audit:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Audit warnings
+        run: |
+          echo "=== Swift Build Warnings ==="
+          swift build 2>&1 | grep -E "(warning|error)" || echo "No warnings found"
+          
+          echo ""
+          echo "=== Release Build Warnings ==="
+          swift build -c release 2>&1 | grep -E "(warning|error)" || echo "No warnings found"
+          
+          # Count warnings
+          WARNING_COUNT=$(swift build 2>&1 | grep -c "warning:" || true)
+          echo "Total warnings in debug build: $WARNING_COUNT"
+          
+          if [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "⚠️  Project has $WARNING_COUNT warnings - see warning cleanup task"
+          else
+            echo "✅ Zero warnings in debug build"
+          fi
+
+      - name: Document unavoidable warnings
+        run: |
+          echo "### Unavoidable Warnings Documentation" > warning-status.md
+          echo "" >> warning-status.md
+          echo "The following warnings are from SDK APIs that cannot be avoided:" >> warning-status.md
+          echo "" >> warning-status.md
+          echo "| File | Warning | Reason |" >> warning-status.md
+          echo "|------|---------|--------|" >> warning-status.md
+          echo "| SystemCapabilities.swift | 'init(cString:)' deprecated | String(decoding:) crashes compiler |" >> warning-status.md
+          echo "" >> warning-status.md
+          cat warning-status.md
+
+      - name: Upload warning status
+        uses: actions/upload-artifact@v4
+        with:
+          name: warning-status
+          path: warning-status.md
+          retention-days: 7

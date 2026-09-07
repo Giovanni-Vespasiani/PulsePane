@@ -21,3 +21,12 @@ Package.resolved
 
 # Temp
 /tmp/
+
+# Coverage
+*.profdata
+*.profraw
+coverage/
+
+# Test temp
+Tests/**/tmp/
+Tests/**/temp/

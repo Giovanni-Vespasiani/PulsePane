@@ -128,7 +128,7 @@ final class NetworkReader: @unchecked Sendable, WakeHandler.BaselineResettable {
         return (upload, download)
     }
 
-    private static func isTrackedInterface(_ name: String) -> Bool {
+    internal static func isTrackedInterface(_ name: String) -> Bool {
         guard !name.isEmpty else { return false }
         return !excludedPrefixes.contains { name.hasPrefix($0) }
     }

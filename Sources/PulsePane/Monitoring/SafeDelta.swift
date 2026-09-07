@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Handles the common patterns in metric sampling:
 /// - First sample (no previous baseline) → returns nil
-/// - Counter reset/rollover (new < old) → returns nil, caller should reset baseline
+/// - Counter reset/rollover (new < old) → returns nil, and next sample also returns nil to establish new baseline
 /// - Zero elapsed time → returns nil
 /// - Valid delta → returns rate per second
 ///
@@ -56,6 +56,10 @@ enum SafeDelta {
 /// Encapsulates the previous value and provides a safe `sample(newValue:interval:) -> Double?`
 /// method that returns the rate per second or nil on first sample/reset.
 ///
+/// When a counter reset is detected (newValue < previous), this returns nil AND
+/// marks the counter as having just reset. The next sample will also return nil
+/// to establish a new baseline, then normal delta computation resumes.
+///
 /// Usage:
 /// ```swift
 /// let counter = DeltaCounter()
@@ -68,6 +72,7 @@ enum SafeDelta {
 final class DeltaCounter: @unchecked Sendable {
     private var previous: UInt64?
     private var haveSample = false
+    private var justReset = false
 
     /// Records a new counter value and returns the computed rate per second.
     ///
@@ -75,15 +80,28 @@ final class DeltaCounter: @unchecked Sendable {
     ///   - newValue: Current counter reading.
     ///   - interval: Time in seconds since last sample.
     /// - Returns: Rate per second, or nil if this is the first sample
-    ///            or a counter reset was detected.
+    ///            or a counter reset was detected (including the sample after a reset).
     func sample(newValue: UInt64, interval: TimeInterval) -> Double? {
         guard interval > 0 else { return nil }
+
+        // Handle reset detection
+        if haveSample, let prev = previous, newValue < prev {
+            // Counter reset detected
+            previous = newValue
+            justReset = true
+            return nil
+        }
+
+        // If we just reset, this sample establishes new baseline
+        if justReset {
+            justReset = false
+            previous = newValue
+            return nil
+        }
 
         defer { previous = newValue; haveSample = true }
 
         guard haveSample else { return nil } // First sample
-
-        guard newValue >= previous! else { return nil } // Reset/wraparound
 
         let delta = newValue - previous!
         return Double(delta) / interval
@@ -93,6 +111,7 @@ final class DeltaCounter: @unchecked Sendable {
     func reset() {
         previous = nil
         haveSample = false
+        justReset = false
     }
 
     /// Checks if the counter has a valid baseline.
