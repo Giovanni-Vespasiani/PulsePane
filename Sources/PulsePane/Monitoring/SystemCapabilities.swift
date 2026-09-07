@@ -43,13 +43,20 @@ final class SystemCapabilities {
 
     // MARK: - Detection
 
+    /// Determines if the given architecture string represents an Apple Silicon architecture.
+    /// This is a pure function for testability.
+    static func isAppleSiliconArchitecture(_ arch: String) -> Bool {
+        // Apple Silicon architectures start with "arm64" (arm64, arm64e, etc.)
+        return arch.hasPrefix("arm64")
+    }
+
     static func detect() -> Snapshot {
         let model = Self.machineModel()
         let arch = Self.architecture()
         let macOS = Self.macOSVersion()
         let cpuCount = Self.logicalCPUCount()
         let memBytes = Self.physicalMemoryBytes()
-        let isAppleSilicon = model.hasPrefix("Mac") && (arch == "arm64")
+        let isAppleSilicon = model.hasPrefix("Mac") && Self.isAppleSiliconArchitecture(arch)
 
         let gpuInfo = Self.detectGPU()
         let powerInfo = Self.detectPower()

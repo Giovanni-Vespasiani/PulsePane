@@ -8,7 +8,7 @@ final class CapabilityTests: XCTestCase {
         
         // Basic hardware info - portable assertions
         XCTAssertFalse(snapshot.machineModel.isEmpty, "Machine model should not be empty")
-        XCTAssertEqual(snapshot.architecture, "arm64", "Should be arm64 on Apple Silicon")
+        XCTAssertTrue(snapshot.architecture.hasPrefix("arm64"), "Architecture should be arm64 variant on Apple Silicon")
         XCTAssertTrue(snapshot.isAppleSilicon, "Should detect Apple Silicon")
         XCTAssertGreaterThan(snapshot.cpuLogicalCount, 0, "CPU count should be positive")
         XCTAssertGreaterThan(snapshot.physicalMemoryBytes, 0, "Memory should be positive")
@@ -87,8 +87,18 @@ final class CapabilityTests: XCTestCase {
 
     func testAppleSiliconDetection() {
         let snapshot = SystemCapabilities.detect()
-        // On this M4 Mac, should be Apple Silicon
-        XCTAssertTrue(snapshot.isAppleSilicon)
-        XCTAssertEqual(snapshot.architecture, "arm64")
+        // Should detect Apple Silicon on arm64/arm64e
+        XCTAssertTrue(snapshot.isAppleSilicon, "Should detect Apple Silicon on arm64/arm64e")
+        XCTAssertTrue(snapshot.architecture.hasPrefix("arm64"), "Architecture should be arm64 variant")
+    }
+    
+    func testAppleSiliconArchitectureClassification() {
+        // Test the pure architecture classification function
+        XCTAssertTrue(SystemCapabilities.isAppleSiliconArchitecture("arm64"), "arm64 should be Apple Silicon")
+        XCTAssertTrue(SystemCapabilities.isAppleSiliconArchitecture("arm64e"), "arm64e should be Apple Silicon")
+        XCTAssertFalse(SystemCapabilities.isAppleSiliconArchitecture("x86_64"), "x86_64 should not be Apple Silicon")
+        XCTAssertFalse(SystemCapabilities.isAppleSiliconArchitecture("i386"), "i386 should not be Apple Silicon")
+        XCTAssertFalse(SystemCapabilities.isAppleSiliconArchitecture("unknown"), "Unknown arch should not be Apple Silicon")
+        XCTAssertFalse(SystemCapabilities.isAppleSiliconArchitecture(""), "Empty string should not be Apple Silicon")
     }
 }
