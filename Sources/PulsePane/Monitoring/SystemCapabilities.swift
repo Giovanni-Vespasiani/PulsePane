@@ -57,6 +57,9 @@ final class SystemCapabilities {
         let cpuCount = Self.logicalCPUCount()
         let memBytes = Self.physicalMemoryBytes()
         let isAppleSilicon = model.hasPrefix("Mac") && Self.isAppleSiliconArchitecture(arch)
+        
+        // DEBUG: Log architecture for CI debugging
+        fputs("DEBUG: detect() - model=\(model) arch=\(arch) isAppleSilicon=\(isAppleSilicon)\n", stderr)
 
         let gpuInfo = Self.detectGPU()
         let powerInfo = Self.detectPower()
