@@ -16,12 +16,13 @@ live metrics, refreshed ~every second:
 - Temperature (SoC) and CPU frequency — intentionally `—` where no clean
   non-privileged API exists (see Known limitations).
 
-## v2.0 / v2.1 / v2.2 goals
+## v2.0 / v2.1 / v2.2 / v2.3 goals
 - **v2.0:** a working, stable desktop widget showing real CPU/GPU/RAM data.
   No fake or simulated values. *(done)*
 - **v2.1:** complete rebrand to PulsePane with professional identity. *(done)*
 - **v2.2:** runtime hardening — defensive engineering, capability detection,
   lifecycle correctness, safe counter handling, sleep/wake resilience. *(done)*
+- **v2.3:** automated tests & CI — 134 tests, GitHub Actions CI, warning audit. *(done)*
 
 ## Main requirements
 - Native Apple APIs only (Mach, IOKit, AppKit, SwiftUI). No Electron/webview,
@@ -53,6 +54,26 @@ Debug mode prints every sampled metric each second to stderr:
 ```sh
 MP_DEBUG=1 open ~/.build/release/PulsePane.app
 ```
+
+## Testing & CI
+
+```sh
+swift test                    # Run all 134 tests
+swift test --enable-code-coverage  # With coverage report
+swift test --filter <TestClass>   # Run specific test class
+```
+
+**Test Results (v2.3)**: 134 tests passing, 0 failures
+- Critical logic coverage: >90% (parsing, sanitization, delta math, migration)
+- Formatters & sanitizers: 100%
+- UI/hardware integration: manual validation (see DEVELOPMENT.md)
+
+**CI**: GitHub Actions on macOS-14
+- Push/PR to main triggers: Debug build → Tests → Release build → App bundle verification
+- Warning audit: 2 unavoidable deprecation warnings (String(decoding:) in SystemCapabilities)
+- Workflow: `.github/workflows/ci.yml`
+
+See `docs/TESTING.md` for complete test documentation.
 
 ## Repository structure
 ```
