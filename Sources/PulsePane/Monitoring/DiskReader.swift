@@ -135,6 +135,8 @@ final class DiskReader: @unchecked Sendable, WakeHandler.BaselineResettable {
         default:
             return nil
         }
+    }
+
     // MARK: - WakeHandler.BaselineResettable
 
     func resetBaselines() {

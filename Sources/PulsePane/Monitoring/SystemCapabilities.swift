@@ -64,15 +64,15 @@ final class SystemCapabilities {
             isAppleSilicon: isAppleSilicon,
             cpuLogicalCount: cpuCount,
             physicalMemoryBytes: memBytes,
-            gpuAvailable: gpuInfo.available,
-            powerAvailable: powerInfo.available,
-            temperatureAvailable: tempInfo.available,
-            networkAvailable: netInfo.available,
-            diskAvailable: diskInfo.available,
-            gpuServiceClass: gpuInfo.serviceClass,
-            gpuBundleID: gpuInfo.bundleID,
-            gpuPreferredKey: gpuInfo.preferredKey,
-            powerSource: powerInfo.sourceDescription,
+            gpuAvailable: gpuInfo.0,
+            powerAvailable: powerInfo.0,
+            temperatureAvailable: tempInfo,
+            networkAvailable: netInfo,
+            diskAvailable: diskInfo.0,
+            gpuServiceClass: gpuInfo.1,
+            gpuBundleID: gpuInfo.2,
+            gpuPreferredKey: gpuInfo.3,
+            powerSource: powerInfo.1,
             timestamp: Date()
         )
     }
@@ -126,7 +126,8 @@ final class SystemCapabilities {
     }
 
     // GPU detection
-    private static func detectGPU() -> (available: Bool, serviceClass: String?, bundleID: String?, preferredKey: String?) {
+    // Returns: (available, serviceClass, bundleID, preferredKey)
+    private static func detectGPU() -> (Bool, String?, String?, String?) {
         let match = IOServiceMatching("IOAccelerator")
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &iterator) == KERN_SUCCESS else {
@@ -172,7 +173,8 @@ final class SystemCapabilities {
     }
 
     // Power detection
-    private static func detectPower() -> (available: Bool, sourceDescription: String?) {
+    // Returns: (available, sourceDescription)
+    private static func detectPower() -> (Bool, String?) {
         let match = IOServiceMatching("AppleSmartBattery")
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &iterator) == KERN_SUCCESS else {
@@ -198,17 +200,17 @@ final class SystemCapabilities {
     }
 
     // Temperature detection (currently unsupported)
-    private static func detectTemperature() -> (available: Bool) {
+    private static func detectTemperature() -> Bool {
         // AppleSmartBattery Temperature exists but is battery temp, not SoC
         // IOReport MSP0/MSP1 channels require private libIOReport
         // No clean non-privileged SoC temperature API found
-        return (false)
+        return false
     }
 
     // Network detection
-    private static func detectNetwork() -> (available: Bool) {
+    private static func detectNetwork() -> Bool {
         var ifap: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifap) == 0, let list = ifap else { return (false) }
+        guard getifaddrs(&ifap) == 0, let list = ifap else { return false }
         defer { freeifaddrs(ifap) }
 
         var cursor: UnsafeMutablePointer<ifaddrs>? = list
@@ -222,18 +224,19 @@ final class SystemCapabilities {
                !name.hasPrefix("lo"), !name.hasPrefix("awdl"), !name.hasPrefix("llw"),
                !name.hasPrefix("utun"), !name.hasPrefix("ipsec"), !name.hasPrefix("gif"),
                !name.hasPrefix("stf") {
-                return (true)
+                return true
             }
         }
-        return (false)
+        return false
     }
 
     // Disk detection
-    private static func detectDisk() -> (available: Bool) {
+    // Returns: (available, serviceClass)
+    private static func detectDisk() -> (Bool, String?) {
         let match = IOServiceMatching("IOBlockStorageDriver")
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, match, &iterator) == KERN_SUCCESS else {
-            return (false)
+            return (false, nil)
         }
         defer { IOObjectRelease(iterator) }
 
@@ -244,10 +247,14 @@ final class SystemCapabilities {
                 service, "Statistics" as CFString, kCFAllocatorDefault, 0
             )?.takeRetainedValue() as? [String: Any],
                cf["Total Time (Write)"] != nil {
-                return (true)
+                var className = ""
+                if let cfClass = IORegistryEntryCreateCFProperty(service, "IOObjectClass" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String {
+                    className = cfClass
+                }
+                return (true, className.isEmpty ? nil : className)
             }
             service = IOIteratorNext(iterator)
         }
-        return (false)
+        return (false, nil)
     }
 }

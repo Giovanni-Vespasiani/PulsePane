@@ -6,16 +6,22 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 CONFIG="${1:-debug}"
-BUILD_DIR="$ROOT/.build/$CONFIG"
-BIN="$BUILD_DIR/PulsePane"
-APP="$BUILD_DIR/PulsePane.app"
+
+# Find the built binary (SwiftPM uses platform-specific build directory)
+# Exclude binaries already inside .app bundles to avoid nested app creation
+BUILD_DIR="$ROOT/.build"
+BIN=$(find "$BUILD_DIR" -name "PulsePane" -type f -path "*/$CONFIG/*" -perm +111 2>/dev/null | grep -v "\.app/" | head -n1)
+BIN_DIR=$(dirname "$BIN")
+APP="$BIN_DIR/PulsePane.app"
 
 if [[ ! -f "$BIN" ]]; then
-  echo "error: binary not found at $BIN. Run 'swift build -c $CONFIG' first." >&2
+  echo "error: binary not found for config '$CONFIG'. Run 'swift build -c $CONFIG' first." >&2
   exit 1
 fi
 
+# Remove any existing app to avoid nested app creation
 rm -rf "$APP"
+
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN" "$APP/Contents/MacOS/PulsePane"
@@ -33,9 +39,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>
     <string>io.github.Giovanni-Vespasiani.PulsePane</string>
     <key>CFBundleVersion</key>
-    <string>2.1.0</string>
+    <string>2.3.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.1.0</string>
+    <string>2.3.0</string>
     <key>CFBundleExecutable</key>
     <string>PulsePane</string>
     <key>CFBundlePackageType</key>

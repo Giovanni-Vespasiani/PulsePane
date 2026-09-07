@@ -183,6 +183,8 @@ final class GPUReader: @unchecked Sendable, WakeHandler.BaselineResettable {
             logger.debug("GPU: key '\(key)' value \(v) clamped to \(clamped)")
         }
         return clamped
+    }
+
     // MARK: - WakeHandler.BaselineResettable
 
     func resetBaselines() {

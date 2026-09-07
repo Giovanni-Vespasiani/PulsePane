@@ -99,6 +99,8 @@ final class CPUReader: @unchecked Sendable, WakeHandler.BaselineResettable {
     /// (kernel counters are cumulative counts, cannot be negative).
     private func counter(_ info: processor_info_array_t, base: Int, state: Int32) -> UInt64 {
         UInt64(info[base + Int(state)])
+    }
+
     // MARK: - BaselineResettable
 
     func resetBaselines() {

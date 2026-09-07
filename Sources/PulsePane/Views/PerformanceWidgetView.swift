@@ -98,8 +98,10 @@ struct PerformanceWidgetView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 22)
         .frame(width: 340)
-        .background(panelBackground, alignment: .top)
         .task { await monitor.run(model: model) }
+        .background {
+            panelBackground
+        }
     }
 
     /// Rounded translucent dark panel + subtle border + soft shadow.
