@@ -56,7 +56,9 @@ final class SystemCapabilities {
         let macOS = Self.macOSVersion()
         let cpuCount = Self.logicalCPUCount()
         let memBytes = Self.physicalMemoryBytes()
-        let isAppleSilicon = model.hasPrefix("Mac") && Self.isAppleSiliconArchitecture(arch)
+        // Use architecture as the sole determinant for Apple Silicon
+        // Virtual Mac models may not have "Mac" prefix (e.g., "VirtualMac2,1")
+        let isAppleSilicon = Self.isAppleSiliconArchitecture(arch)
         
         // DEBUG: Log architecture for CI debugging
         fputs("DEBUG: detect() - model=\(model) arch=\(arch) isAppleSilicon=\(isAppleSilicon)\n", stderr)
