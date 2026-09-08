@@ -15,6 +15,7 @@ import SwiftUI
 @MainActor
 final class WindowController: NSObject, NSWindowDelegate {
     let window: NSWindow
+    private var appearanceObserver: NSKeyValueObservation?
 
     init(contentView: some View) {
         let contentRect = NSRect(origin: .zero, size: Self.defaultSize)
@@ -38,8 +39,7 @@ final class WindowController: NSObject, NSWindowDelegate {
         }
         window.level = NSWindow.Level(rawValue: rawLevel)
 
-        // Always render the widget in dark, regardless of system appearance.
-        window.appearance = NSAppearance(named: .darkAqua)
+        // No forced dark mode — follow system appearance automatically.
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false
@@ -54,6 +54,9 @@ final class WindowController: NSObject, NSWindowDelegate {
         window.title = "PulsePane"
 
         super.init()
+
+        // Observe system appearance changes for live Light/Dark switching
+        observeAppearanceChanges()
 
         // Perform one-time legacy preference migration before restoring frame.
         migrateLegacyPreferencesIfNeeded()
@@ -90,6 +93,45 @@ final class WindowController: NSObject, NSWindowDelegate {
     private func log(_ message: String) {
         guard ProcessInfo.processInfo.environment["MP_DEBUG"] == "1" else { return }
         FileHandle.standardError.write((message + "\n").data(using: .utf8)!)
+    }
+
+    // MARK: - Appearance observation
+
+    private func observeAppearanceChanges() {
+        // Observe effective appearance changes for live Light/Dark switching
+        // effectiveAppearance is main actor isolated, so we observe from MainActor
+        Task { @MainActor in
+            appearanceObserver = window.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+                self?.updateAppearance()
+            }
+        }
+
+        // Observe accessibility settings
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(accessibilitySettingsChanged),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil
+        )
+    }
+
+    @MainActor
+    private func updateAppearance() {
+        // Widget follows system appearance automatically (no forced dark mode)
+        // Background/material is handled by SwiftUI views via semantic colors
+        log("appearance updated: \(window.effectiveAppearance.name.rawValue)")
+    }
+
+    @objc private func accessibilitySettingsChanged() {
+        Task { @MainActor in
+            updateAppearance()
+            log("accessibility settings changed")
+        }
+    }
+
+    deinit {
+        appearanceObserver?.invalidate()
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Position persistence
@@ -199,7 +241,7 @@ final class WindowController: NSObject, NSWindowDelegate {
         return menu
     }
 
-    @MainActor @objc private func quitApp() {
+    @objc private func quitApp() {
         NSApp.terminate(nil)
     }
 }
