@@ -1,10 +1,11 @@
 import Foundation
 import Darwin
+import CoreWLAN
 import os
 
 /// Reads live per-interface byte counters via `getifaddrs` (native, no
 /// subprocess) and computes upload/download rate from the delta between two
-/// samples (≈1 s apart).
+/// samples (≈1 s apart). Also provides Wi-Fi link quality via CoreWLAN.
 ///
 /// # Interface Selection Policy
 /// We aggregate counters from **active, non-loopback, physical-ish interfaces**
@@ -33,7 +34,7 @@ import os
 /// - Uses `SafeDelta` for safe delta computation
 /// - Counter reset/rollover → returns nil, baseline reset
 /// - First sample → returns nil, establishes baseline
-/// - Negative delta (counter regression) → treated as reset, returns nil
+/// - Negative delta (counter regression) → treated as reset
 ///
 /// # Error Handling
 /// - `getifaddrs` failure → unavailable
@@ -70,13 +71,18 @@ final class NetworkReader: @unchecked Sendable, WakeHandler.BaselineResettable {
 
     // MARK: - Public API
 
-    func read() -> (uploadPerSec: Double?, downloadPerSec: Double?) {
+    /// Reads network byte counters and Wi-Fi link quality.
+    ///
+    /// - Returns: Tuple of (upload bytes/sec, download bytes/sec, quality snapshot)
+    func read() -> (uploadPerSec: Double?, downloadPerSec: Double?, quality: NetworkQualityReader.Snapshot) {
+        // Read byte counters via getifaddrs
         var interfacePointer: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&interfacePointer) == 0, let addressList = interfacePointer else {
             logger.debug("Network: getifaddrs failed")
             inCounter.reset()
             outCounter.reset()
-            return (nil, nil)
+            let quality = NetworkQualityReader().snapshot()
+            return (nil, nil, quality)
         }
         defer { freeifaddrs(interfacePointer) }
 
@@ -104,6 +110,7 @@ final class NetworkReader: @unchecked Sendable, WakeHandler.BaselineResettable {
             bytesIn += UInt64(data.ifi_ibytes)
             bytesOut += UInt64(data.ifi_obytes)
             interfaceCount += 1
+            cursor = current.pointee.ifa_next
         }
 
         logger.debug("Network: sampled \(interfaceCount) interfaces, in=\(bytesIn) out=\(bytesOut)")
@@ -115,17 +122,21 @@ final class NetworkReader: @unchecked Sendable, WakeHandler.BaselineResettable {
         let upload = inCounter.sample(newValue: bytesOut, interval: interval)
         let download = outCounter.sample(newValue: bytesIn, interval: interval)
 
-        // Check for counter resets (counters return nil on reset)
-        let inReset = bytesOut < (previous?.bytesOut ?? 0)
-        let outReset = bytesIn < (previous?.bytesIn ?? 0)
-        if inReset || outReset {
+        // Check for counter resets
+        let readReset = bytesOut < (previous?.bytesOut ?? 0)
+        let writeReset = bytesIn < (previous?.bytesIn ?? 0)
+        if readReset || writeReset {
             logger.debug("Network: counter reset detected, resetting baselines")
             inCounter.reset()
             outCounter.reset()
         }
 
         previous = Sample(bytesIn: bytesIn, bytesOut: bytesOut, date: now)
-        return (upload, download)
+
+        // Get Wi-Fi quality snapshot
+        let quality = NetworkQualityReader().snapshot()
+
+        return (upload, download, quality)
     }
 
     internal static func isTrackedInterface(_ name: String) -> Bool {
