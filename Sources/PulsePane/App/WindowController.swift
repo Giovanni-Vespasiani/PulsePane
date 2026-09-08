@@ -44,7 +44,13 @@ final class WindowController: NSObject, NSWindowDelegate {
         window.backgroundColor = .clear
         window.hasShadow = false
         window.isMovableByWindowBackground = true
-        window.collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle]
+        // Native desktop widget behavior:
+        // - .stationary: stays put on its Space
+        // - .canJoinAllSpaces: visible on all Spaces (like desktop icons)
+        // - .ignoresCycle: never grabbed by Cmd-Tab / window cycling
+        // - .fullScreenNone: stays BELOW fullscreen apps, never floating over them
+        // - .transient: hidden from Mission Control / Spaces overview (like native widgets)
+        window.collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle, .fullScreenNone, .transient]
         window.title = "PulsePane"
 
         super.init()
@@ -151,7 +157,7 @@ final class WindowController: NSObject, NSWindowDelegate {
             if parts.count == 2, parts[0] == Self.frameVersion {
                 let rect = NSRectFromString(String(parts[1]))
                 let sized = NSRect(origin: rect.origin, size: Self.defaultSize)
-                return isOnAnyVisibleScreen(sized) ? sized : defaultFrame()
+                return DesktopGeometry.isValidRect(sized) ? sized : defaultFrame()
             }
         }
         // v1 frame (unversioned) or invalid → default origin with v2 size.
@@ -159,28 +165,24 @@ final class WindowController: NSObject, NSWindowDelegate {
     }
 
     private func defaultFrame() -> NSRect {
-        guard let screen = NSScreen.main else {
-            return NSRect(origin: NSPoint(x: 100, y: 100), size: Self.defaultSize)
-        }
-        let visible = screen.visibleFrame
-        let origin = NSPoint(
-            x: visible.midX - Self.defaultSize.width / 2,
-            y: visible.midY - Self.defaultSize.height / 2
-        )
-        return NSRect(origin: origin, size: Self.defaultSize)
+        return DesktopGeometry.defaultFrame(defaultSize: Self.defaultSize)
     }
 
     /// Clamps/validates: a restored frame only counts if it overlaps a visible
     /// screen enough to remain usable (e.g. after a monitor was unplugged).
     private func isOnAnyVisibleScreen(_ rect: NSRect) -> Bool {
-        var union = NSRect.null
-        for screen in NSScreen.screens {
-            union = union.union(screen.frame)
+        return DesktopGeometry.isValidRect(rect)
+    }
+
+    // MARK: - Window drag handling with edge snapping
+
+    func windowDidMove(_ notification: Notification) {
+        // Apply edge snapping when drag ends
+        let snappedFrame = DesktopGeometry.snapToEdges(window.frame)
+        if !NSEqualRects(snappedFrame, window.frame) {
+            window.setFrame(snappedFrame, display: true, animate: true)
         }
-        if union.isNull { return false }
-        let intersection = rect.intersection(union)
-        if intersection.isNull { return false }
-        return intersection.width * intersection.height >= 9000
+        persistFrame()
     }
 
     // MARK: - Quit affordance (no Dock icon, so a right-click menu)
@@ -199,11 +201,5 @@ final class WindowController: NSObject, NSWindowDelegate {
 
     @MainActor @objc private func quitApp() {
         NSApp.terminate(nil)
-    }
-
-    // MARK: - NSWindowDelegate
-
-    func windowDidMove(_ notification: Notification) {
-        persistFrame()
     }
 }
