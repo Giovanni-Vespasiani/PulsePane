@@ -64,7 +64,7 @@ final class WindowController: NSObject, NSWindowDelegate {
         log("level rawValue = \(rawLevel) (default: \(defaultLevel), desktopIcon: \(Int(CGWindowLevelForKey(.desktopIconWindow))))")
 
         window.delegate = self
-        window.contentView = NSHostingView(rootView: contentView)
+        window.contentView = RoundedHostingView(rootView: contentView, cornerRadius: 28)
         window.contentView?.menu = quitMenu
     }
 
@@ -99,11 +99,8 @@ final class WindowController: NSObject, NSWindowDelegate {
 
     private func observeAppearanceChanges() {
         // Observe effective appearance changes for live Light/Dark switching
-        // effectiveAppearance is main actor isolated, so we observe from MainActor
-        Task { @MainActor in
-            appearanceObserver = window.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-                self?.updateAppearance()
-            }
+        appearanceObserver = window.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            self?.updateAppearance()
         }
 
         // Observe accessibility settings
@@ -123,10 +120,8 @@ final class WindowController: NSObject, NSWindowDelegate {
     }
 
     @objc private func accessibilitySettingsChanged() {
-        Task { @MainActor in
-            updateAppearance()
-            log("accessibility settings changed")
-        }
+        updateAppearance()
+        log("accessibility settings changed")
     }
 
     deinit {
