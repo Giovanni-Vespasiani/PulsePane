@@ -1,102 +1,75 @@
 import SwiftUI
 
-/// v2 main widget view: a dark, Apple-widget-style glass panel.
+/// v2.4 main widget view: a native macOS desktop panel with semantic theming.
 ///
 /// Layout:
 ///   header (PulsePane + M4 badge)
-///   ── CPU (histogram + %)
-///   ── GPU (histogram + %)
-///   ── Memory (progress bar + % / GB)
+///   ── CPU (ring + %)
+///   ── GPU (ring + %)
+///   ── Memory (ring + %)
 ///   ── divider ──
-///   Network  ↑/↓    Disk  R/W    Power    Temperature
+///   Network  ↑/↓
+///   ── footer (system info)
 ///
-/// The panel draws its own rounded background (material over a dark tint)
-/// because the window is transparent and borderless. The window is forced to
-/// `.darkAqua` so the material stays dark regardless of system mode.
+/// The panel uses semantic materials that adapt to Light/Dark mode automatically.
 struct PerformanceWidgetView: View {
     @StateObject private var model = PerformanceModel()
     @State private var monitor = SystemMonitor()
 
     private static let gbDivider = 1_073_741_824.0
-    private static let cpuColor = Color(red: 0.35, green: 0.55, blue: 1.0)      // calm blue
-    private static let gpuColor = Color(red: 0.55, green: 0.45, blue: 1.0)      // muted violet
+
+    // Semantic accent colors (work in both Light/Dark mode)
+    private static let cpuAccent = Color.accentColor // system blue
+    private static let gpuAccent = Color.purple
+    private static let memoryAccent = Color.green
+    private static let networkAccent = Color.blue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-                .padding(.bottom, 18)
+                .padding(.bottom, 16)
 
-            MetricHistogramRow(
-                label: "CPU",
-                secondary: frequencyText,
-                percent: percentText(model.stats.cpuUsage),
-                history: model.cpuHistory,
-                color: Self.cpuColor
-            )
-            .padding(.bottom, 16)
+            // Primary metrics: CPU, GPU, Memory rings
+MetricRingRow(
+            label: "CPU",
+            secondary: frequencyText,
+            percent: model.stats.cpuUsage,
+            accent: Self.cpuAccent
+        )
+        .padding(.bottom, 14)
 
-            MetricHistogramRow(
-                label: "GPU",
-                secondary: model.stats.gpuName ?? "—",
-                percent: gpuValueText,
-                history: gpuHistoryNumbers,
-                color: Self.gpuColor
-            )
-            .padding(.bottom, 16)
+        MetricRingRow(
+            label: "GPU",
+            secondary: model.stats.gpuName ?? "—",
+            percent: model.stats.gpuUsage ?? 0,
+            accent: Self.gpuAccent
+        )
+        .padding(.bottom, 14)
 
-            MetricProgressRow(
+            MetricRingRow(
                 label: "Memory",
                 secondary: memoryDetailText,
-                percent: percentText(model.stats.memoryUsagePercent),
-                fraction: fractionText
+                percent: model.stats.memoryUsagePercent,
+                accent: Self.memoryAccent
             )
-            .padding(.bottom, 9)
+            .padding(.bottom, 8)
 
             divider
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
 
-            SecondaryMetricRow(
-                label: "Network",
-                values: [
-                    (prefix: "↑", text: model.stats.networkUploadBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—"),
-                    (prefix: "↓", text: model.stats.networkDownloadBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—")
-                ]
+            // Secondary metric: Network
+            NetworkMetricRow(
+                upload: model.stats.networkUploadBytesPerSec,
+                download: model.stats.networkDownloadBytesPerSec
             )
             .padding(.vertical, 6)
 
-            SecondaryMetricRow(
-                label: "Disk",
-                values: [
-                    (prefix: "R", text: model.stats.diskReadBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—"),
-                    (prefix: "W", text: model.stats.diskWriteBytesPerSec.map { ByteRate.string(bytesPerSec: $0) } ?? "—")
-                ]
-            )
-            .padding(.vertical, 6)
-
-            HStack(spacing: 6) {
-                Text("Power")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
-                Spacer()
-                Text(MetricFormatters.power(model.stats.powerWatts))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-
-                Text("·")
-
-                Text("Temp")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
-                Text(MetricFormatters.temperature(model.stats.socTemperatureCelsius))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-            }
-            .padding(.vertical, 6)
+            // Footer
+            footer
+                .padding(.top, 8)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 22)
+        .padding(.vertical, 18)
         .frame(width: 340)
         .task { await monitor.run(model: model) }
         .background {
@@ -104,17 +77,20 @@ struct PerformanceWidgetView: View {
         }
     }
 
-    /// Rounded translucent dark panel + subtle border + soft shadow.
+    /// Panel background using semantic materials that adapt to Light/Dark mode.
     private var panelBackground: some View {
         ZStack {
+            // Base tint - subtle dark in Dark mode, subtle light in Light mode
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.black.opacity(0.42))
+                .fill(Color.primary.opacity(0.06))
+            // Native material for vibrancy
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.regularMaterial)
+            // Subtle border
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
         }
-        .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.15), radius: 14, x: 0, y: 4)
     }
 
     private var header: some View {
@@ -128,24 +104,51 @@ struct PerformanceWidgetView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            // SoC badge
             Text("M4")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Capsule().fill(Color.white.opacity(0.1)))
+                .background(Capsule().fill(Color.primary.opacity(0.1)))
         }
     }
 
     private var divider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.1))
+            .fill(Color.primary.opacity(0.08))
             .frame(height: 1)
     }
 
     private var headerSubtitle: String {
         model.stats.gpuName ?? "System Monitor"
     }
+
+    private var footer: some View {
+        HStack(spacing: 12) {
+            // System info footer
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(Int(model.stats.memoryUsagePercent))% MEM")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Text("\(Int(model.stats.cpuUsage))% CPU")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            Spacer()
+
+            // Version/build info
+            Text("PulsePane v2.4")
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+        }
+    }
+
+    // MARK: - Formatted values
 
     private func percentText(_ value: Double) -> String {
         MetricFormatters.percent(MetricSanitizers.percent(value))
@@ -161,18 +164,111 @@ struct PerformanceWidgetView: View {
         return MetricFormatters.frequency(MetricSanitizers.frequencyGHz(ghz))
     }
 
-    private var gpuHistoryNumbers: [Double] {
-        model.gpuHistory.map { $0 ?? 0 }
-    }
-
-    private var fractionText: Double? {
-        model.stats.memoryTotal > 0 ? model.stats.memoryUsagePercent / 100 : nil
-    }
-
     private var memoryDetailText: String {
         guard model.stats.memoryTotal > 0, model.stats.memoryUsed > 0 else { return "—" }
         let used = Double(model.stats.memoryUsed) / Self.gbDivider
         let total = Double(model.stats.memoryTotal) / Self.gbDivider
         return String(format: "%.1f / %.0f GB", used, total)
+    }
+}
+
+/// Circular metric ring row with label, secondary text, percentage, and ring.
+private struct MetricRingRow: View {
+    let label: String
+    let secondary: String
+    let percent: Double
+    let accent: Color
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            // Label + secondary
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(secondary)
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            // Percentage + Ring
+            HStack(alignment: .center, spacing: 10) {
+                Text(MetricFormatters.percent(MetricSanitizers.percent(percent)))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .frame(minWidth: 44, alignment: .trailing)
+
+                CircularProgressRing(progress: percent / 100, accent: accent)
+                    .frame(width: 48, height: 48)
+            }
+        }
+    }
+}
+
+/// Circular progress ring with semantic accent color.
+private struct CircularProgressRing: View {
+    let progress: Double // 0.0 to 1.0
+    let accent: Color
+    let lineWidth: CGFloat = 4
+
+    var body: some View {
+        ZStack {
+            // Track
+            Circle()
+                .stroke(accent.opacity(0.15), lineWidth: lineWidth)
+
+            // Progress
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    accent,
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .animation(.easeOut(duration: 0.4), value: progress)
+        }
+        .frame(width: 48, height: 48)
+    }
+}
+
+/// Network metric row showing upload/download with semantic colors.
+private struct NetworkMetricRow: View {
+    let upload: Double?
+    let download: Double?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Network")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.primary)
+                .frame(width: 64, alignment: .leading)
+
+            Spacer(minLength: 12)
+
+            // Upload
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.blue)
+                Text(MetricFormatters.byteRate(upload))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
+
+            // Download
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.green)
+                Text(MetricFormatters.byteRate(download))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
+        }
     }
 }
