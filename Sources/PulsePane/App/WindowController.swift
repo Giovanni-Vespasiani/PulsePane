@@ -144,7 +144,7 @@ final class WindowController: NSObject, NSWindowDelegate {
     private func observeAppearanceChanges() {
         // Observe effective appearance changes for live Light/Dark switching
         appearanceObserver = window.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            self?.updateAppearance()
+            Task { @MainActor in self?.updateAppearance() }
         }
 
         // Observe accessibility settings
@@ -176,7 +176,7 @@ final class WindowController: NSObject, NSWindowDelegate {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.handleScreenParametersChange()
+            Task { @MainActor in self?.handleScreenParametersChange() }
         }
         screenParamsObserver = ObserverToken(token)
     }
