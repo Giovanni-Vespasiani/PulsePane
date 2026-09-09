@@ -14,7 +14,8 @@ final class PerformanceModel: ObservableObject, @unchecked Sendable {
     // Network display hold: keep last valid value for up to 2 cycles after invalid sample
     private var lastValidUpload: Double? = nil
     private var lastValidDownload: Double? = nil
-    private var holdCounter: Int = 0
+    private var uploadNilCount: Int = 0
+    private var downloadNilCount: Int = 0
     private let maxHoldCycles = 2
 
     @Published private(set) var stats: SystemStats = .empty
@@ -25,7 +26,7 @@ final class PerformanceModel: ObservableObject, @unchecked Sendable {
     var displayUpload: Double? {
         if let upload = stats.networkUploadBytesPerSec {
             return upload
-        } else if holdCounter > 0 {
+        } else if uploadNilCount > 0 && uploadNilCount <= maxHoldCycles {
             return lastValidUpload
         } else {
             return nil
@@ -35,7 +36,7 @@ final class PerformanceModel: ObservableObject, @unchecked Sendable {
     var displayDownload: Double? {
         if let download = stats.networkDownloadBytesPerSec {
             return download
-        } else if holdCounter > 0 {
+        } else if downloadNilCount > 0 && downloadNilCount <= maxHoldCycles {
             return lastValidDownload
         } else {
             return nil
@@ -44,23 +45,20 @@ final class PerformanceModel: ObservableObject, @unchecked Sendable {
 
     /// Called from the main thread only (see SystemMonitor.run).
     func update(_ snapshot: SystemStats) {
-        // Update hold logic for network
+        // Update hold logic for network upload
         if let upload = snapshot.networkUploadBytesPerSec {
             lastValidUpload = upload
-            holdCounter = maxHoldCycles
-        } else if holdCounter > 0 {
-            holdCounter -= 1
+            uploadNilCount = 0
         } else {
-            lastValidUpload = nil
+            uploadNilCount += 1
         }
 
+        // Update hold logic for network download
         if let download = snapshot.networkDownloadBytesPerSec {
             lastValidDownload = download
-            // holdCounter already managed by upload; keep same counter for both
-        } else if holdCounter > 0 {
-            // holdCounter already decremented above
+            downloadNilCount = 0
         } else {
-            lastValidDownload = nil
+            downloadNilCount += 1
         }
 
         stats = snapshot

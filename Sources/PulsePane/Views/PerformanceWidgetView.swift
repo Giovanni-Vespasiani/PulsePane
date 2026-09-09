@@ -202,6 +202,7 @@ private struct CircularProgressRing: View {
     let progress: Double // 0.0 to 1.0
     let accent: Color
     let lineWidth: CGFloat = 4
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
 
     var body: some View {
         ZStack {
@@ -217,7 +218,7 @@ private struct CircularProgressRing: View {
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .animation(.easeOut(duration: 0.4), value: progress)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.4), value: progress)
         }
         .frame(width: 48, height: 48)
     }
