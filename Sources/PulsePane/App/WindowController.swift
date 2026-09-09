@@ -12,10 +12,19 @@ import SwiftUI
 /// - `collectionBehavior = [.stationary]` → stays put on its Space.
 /// - Position saved to/restored from `UserDefaults`, clamped to a visible
 ///   screen on launch (handles display changes / unplugged monitors).
+/// - Live observation of `NSApplication.didChangeScreenParametersNotification`
+///   to recover position when Dock position/visibility or display configuration changes.
 @MainActor
 final class WindowController: NSObject, NSWindowDelegate {
     let window: NSWindow
     private var appearanceObserver: NSKeyValueObservation?
+    private var screenParamsObserver: ObserverToken?
+
+    // Simple Sendable wrapper for the notification token
+    private final class ObserverToken: @unchecked Sendable {
+        let token: NSObjectProtocol
+        init(_ token: NSObjectProtocol) { self.token = token }
+    }
 
     init(contentView: some View) {
         let contentRect = NSRect(origin: .zero, size: Self.defaultSize)
@@ -26,12 +35,13 @@ final class WindowController: NSObject, NSWindowDelegate {
             defer: false
         )
 
-        // Window level (see DECISIONS D-006).
+// Window level (see DECISIONS D-006).
         // kCGDesktopWindowLevel ends up BELOW Finder's full-screen desktop
         // window (kCGDesktopIconWindowLevel) → widget hidden. We render just
         // ABOVE the desktop icons layer and below kCGNormalWindowLevel (0).
         // MP_WINDOW_LEVEL env var overrides the raw level for A/B testing.
-        let defaultLevel = Int(CGWindowLevelForKey(.desktopIconWindow)) + 1
+        // Phase 1 approved default: kCGDesktopIconWindowLevel + 2 (native widget layer)
+        let defaultLevel = Int(CGWindowLevelForKey(.desktopIconWindow)) + 2
         var rawLevel = defaultLevel
         if let env = ProcessInfo.processInfo.environment["MP_WINDOW_LEVEL"],
            let value = Int(env) {
@@ -39,24 +49,35 @@ final class WindowController: NSObject, NSWindowDelegate {
         }
         window.level = NSWindow.Level(rawValue: rawLevel)
 
-        // No forced dark mode — follow system appearance automatically.
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.isMovableByWindowBackground = true
-        // Native desktop widget behavior:
-        // - .stationary: stays put on its Space
-        // - .canJoinAllSpaces: visible on all Spaces (like desktop icons)
-        // - .ignoresCycle: never grabbed by Cmd-Tab / window cycling
-        // - .fullScreenNone: stays BELOW fullscreen apps, never floating over them
-        // - .transient: hidden from Mission Control / Spaces overview (like native widgets)
-        window.collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle, .fullScreenNone, .transient]
+        // collectionBehavior variants for Phase 1 experiments (CB-001).
+        // MP_BEHAVIOR: "A" (v2.4 current), "B" (Phase 1 approved, minus .transient), "C" (minus .fullScreenNone), "D" (minimal)
+        // Phase 1 approved default: Variant B
+        let defaultBehavior: NSWindow.CollectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle, .fullScreenNone]
+        var collectionBehavior = defaultBehavior
+        if let env = ProcessInfo.processInfo.environment["MP_BEHAVIOR"] {
+            switch env {
+            case "A":
+                collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle, .fullScreenNone, .transient]
+            case "B":
+                collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle, .fullScreenNone]
+            case "C":
+                collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle, .transient]
+            case "D":
+                collectionBehavior = [.stationary, .canJoinAllSpaces, .ignoresCycle]
+            default:
+                collectionBehavior = defaultBehavior
+            }
+        }
+        window.collectionBehavior = collectionBehavior
         window.title = "PulsePane"
 
         super.init()
 
         // Observe system appearance changes for live Light/Dark switching
         observeAppearanceChanges()
+
+        // Observe display / Dock / screen parameter changes
+        observeScreenParametersChanges()
 
         // Perform one-time legacy preference migration before restoring frame.
         migrateLegacyPreferencesIfNeeded()
@@ -124,8 +145,41 @@ final class WindowController: NSObject, NSWindowDelegate {
         log("accessibility settings changed")
     }
 
+    // MARK: - Screen parameters observation
+
+    private func observeScreenParametersChanges() {
+        let token = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleScreenParametersChange()
+        }
+        screenParamsObserver = ObserverToken(token)
+    }
+
+    @MainActor
+    private func handleScreenParametersChange() {
+        log("screen parameters changed — revalidating window frame")
+        // If current frame is no longer valid (e.g., Dock moved, display removed),
+        // recover a valid frame preserving the user's intent as much as possible.
+        if !DesktopGeometry.isValidRect(window.frame) {
+            let recovered = DesktopGeometry.recoverFrame(window.frame, defaultSize: Self.defaultSize)
+            if !NSEqualRects(recovered, window.frame) {
+                log("frame invalid → recovered to \(NSStringFromRect(recovered))")
+                window.setFrame(recovered, display: true, animate: true)
+                persistFrame()
+            }
+        }
+    }
+
     deinit {
         appearanceObserver?.invalidate()
+        if let wrapper = screenParamsObserver {
+            DispatchQueue.main.sync {
+                NotificationCenter.default.removeObserver(wrapper.token)
+            }
+        }
         NotificationCenter.default.removeObserver(self)
     }
 
