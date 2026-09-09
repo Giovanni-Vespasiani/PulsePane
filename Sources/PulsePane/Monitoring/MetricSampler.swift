@@ -35,6 +35,7 @@ final class MetricSampler: @unchecked Sendable {
             gpuName: "Apple GPU",
             networkUploadBytesPerSec: networkSnapshot.uploadPerSec,
             networkDownloadBytesPerSec: networkSnapshot.downloadPerSec,
+            networkQuality: networkSnapshot.quality,
             diskReadBytesPerSec: diskSnapshot.readPerSec,
             diskWriteBytesPerSec: diskSnapshot.writePerSec,
             powerWatts: powerWatts,

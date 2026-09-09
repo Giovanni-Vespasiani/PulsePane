@@ -1,4 +1,5 @@
 import Foundation
+import CoreWLAN
 
 /// Immutable snapshot of one sampling cycle. `Sendable` so it can cross
 /// actor boundaries without data races.
@@ -19,6 +20,7 @@ struct SystemStats: Sendable {
     let gpuName: String?
     let networkUploadBytesPerSec: Double?
     let networkDownloadBytesPerSec: Double?
+    let networkQuality: NetworkQualityReader.Snapshot?
     let diskReadBytesPerSec: Double?
     let diskWriteBytesPerSec: Double?
     let powerWatts: Double?
@@ -42,6 +44,7 @@ struct SystemStats: Sendable {
         gpuName: nil,
         networkUploadBytesPerSec: nil,
         networkDownloadBytesPerSec: nil,
+        networkQuality: nil,
         diskReadBytesPerSec: nil,
         diskWriteBytesPerSec: nil,
         powerWatts: nil,

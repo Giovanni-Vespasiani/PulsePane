@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreWLAN
 
 /// v2.4 main widget view: a native macOS desktop panel with semantic theming.
 ///
@@ -59,8 +60,9 @@ MetricRingRow(
 
             // Secondary metric: Network
             NetworkMetricRow(
-                upload: model.stats.networkUploadBytesPerSec,
-                download: model.stats.networkDownloadBytesPerSec
+                upload: model.displayUpload,
+                download: model.displayDownload,
+                quality: model.stats.networkQuality
             )
             .padding(.vertical, 6)
 
@@ -126,20 +128,7 @@ MetricRingRow(
 
     private var footer: some View {
         HStack(spacing: 12) {
-            // System info footer
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(Int(model.stats.memoryUsagePercent))% MEM")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                Text("\(Int(model.stats.cpuUsage))% CPU")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-
             Spacer()
-
             // Version/build info
             Text("PulsePane v2.4")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
@@ -238,6 +227,7 @@ private struct CircularProgressRing: View {
 private struct NetworkMetricRow: View {
     let upload: Double?
     let download: Double?
+    let quality: NetworkQualityReader.Snapshot?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -268,6 +258,16 @@ private struct NetworkMetricRow: View {
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
+            }
+
+            // Quality
+            if let quality = quality {
+                Text(quality.quality.rawValue.capitalized)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.primary.opacity(0.1)))
             }
         }
     }
