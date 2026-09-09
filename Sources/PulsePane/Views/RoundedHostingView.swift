@@ -48,4 +48,19 @@ final class RoundedHostingView<Content: View>: NSHostingView<Content> {
     private func updateCornerRadius() {
         layer?.cornerRadius = cornerRadius
     }
+
+    // MARK: - Drag handling (Candidate A: NSWindow.performDrag)
+
+    override func mouseDown(with event: NSEvent) {
+        // Only initiate window drag on left mouse button; allow right-click for context menu.
+        if event.type == .leftMouseDown {
+            window?.performDrag(with: event)
+            // After the drag ends, notify to snap and persist.
+            if let win = window {
+                NotificationCenter.default.post(name: .pulsePaneWindowDragEnded, object: win)
+            }
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
 }

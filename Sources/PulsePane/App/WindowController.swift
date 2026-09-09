@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    static let pulsePaneWindowDragEnded = Notification.Name("PulsePaneWindowDragEnded")
+}
+
 /// Owns the single frameless widget window.
 ///
 /// Behaviour chosen empirically for the "desktop widget" requirement
@@ -70,6 +74,8 @@ final class WindowController: NSObject, NSWindowDelegate {
         }
         window.collectionBehavior = collectionBehavior
         window.title = "PulsePane"
+        // Drag is handled by RoundedHostingView.mouseDown → performDrag; disable built-in background drag.
+        window.isMovableByWindowBackground = false
 
         super.init()
 
@@ -87,6 +93,23 @@ final class WindowController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.contentView = RoundedHostingView(rootView: contentView, cornerRadius: 28)
         window.contentView?.menu = quitMenu
+
+        // Observe drag-ended notification to snap and persist frame.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDragEnded(_:)),
+            name: .pulsePaneWindowDragEnded,
+            object: window
+        )
+    }
+
+    @objc private func handleDragEnded(_ notification: Notification) {
+        guard let win = notification.object as? NSWindow else { return }
+        let snapped = DesktopGeometry.snapToEdges(win.frame)
+        if !NSEqualRects(snapped, win.frame) {
+            win.setFrame(snapped, display: true, animate: true)
+        }
+        persistFrame()
     }
 
     // MARK: - Showing
@@ -268,11 +291,7 @@ final class WindowController: NSObject, NSWindowDelegate {
     // MARK: - Window drag handling with edge snapping
 
     func windowDidMove(_ notification: Notification) {
-        // Apply edge snapping when drag ends
-        let snappedFrame = DesktopGeometry.snapToEdges(window.frame)
-        if !NSEqualRects(snappedFrame, window.frame) {
-            window.setFrame(snappedFrame, display: true, animate: true)
-        }
+        // Persist frame on any move; snapping is handled on drag end via notification.
         persistFrame()
     }
 
