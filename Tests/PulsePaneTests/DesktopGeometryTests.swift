@@ -42,11 +42,13 @@ final class DesktopGeometryTests: XCTestCase {
         let clampedRight = DesktopGeometry.clampToVisibleScreens(offScreenRight, defaultSize: defaultSize)
         XCTAssertTrue(DesktopGeometry.isValidRect(clampedRight))
 
-        // Test a valid frame stays unchanged
-        let validFrame = NSRect(x: 100, y: 100, width: 340, height: 430)
+        // Test a valid frame stays unchanged (use coordinates within safe area)
+        let screen = NSScreen.main!
+        let safeArea = DesktopGeometry.safeArea(for: screen)
+        let validFrame = NSRect(x: safeArea.minX + 50, y: safeArea.minY + 50, width: 340, height: 430)
         let unchanged = DesktopGeometry.clampToVisibleScreens(validFrame, defaultSize: defaultSize)
-        XCTAssertEqual(unchanged.origin.x, 100, accuracy: 1)
-        XCTAssertEqual(unchanged.origin.y, 100, accuracy: 1)
+        XCTAssertEqual(unchanged.origin.x, validFrame.origin.x, accuracy: 1)
+        XCTAssertEqual(unchanged.origin.y, validFrame.origin.y, accuracy: 1)
     }
 
     func testDefaultFrame() {
