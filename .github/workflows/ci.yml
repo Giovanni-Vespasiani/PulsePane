@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/v2.4.1-native-desktop]
   pull_request:
-    branches: [main]
+    branches: [main, fix/v2.4.1-native-desktop]
 
 permissions:
   contents: read
